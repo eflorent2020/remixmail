@@ -1,0 +1,14 @@
+[
+  {
+    "id": "confirm_message",
+    "translation": "Thank you for creating an account! Please confirm your email address by clicking on the link below:"
+  },
+  {
+    "id": "you_api_key",
+    "translation": "You API key"
+  },
+  {
+    "id": "api_key_message",
+    "translation": "You api key is {.Key}"
+  }    
+]

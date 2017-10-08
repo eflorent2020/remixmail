@@ -1,0 +1,11 @@
+{
+  "api_key_message": {
+    "other": "You api key is {.Key}"
+  },
+  "confirm_message": {
+    "other": "Thank you for creating an account! Please confirm your email address by clicking on the link below:"
+  },
+  "you_api_key": {
+    "other": "You API key"
+  }
+}
