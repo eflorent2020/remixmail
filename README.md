@@ -13,10 +13,11 @@ This software is copyright by the author licensed under the GPLV3.
 
 See [BENEFITS.md](BENEFITS.md) for more informations
 
-Work in progress (early stage, proof of concept)
+**This is a work in progress (early stage, proof of concept)**
 
 TODO:
--more on tests
--frontend
--more on email templating
--mail service bot
+- more on tests
+- frontend
+- more on email templating
+- mail service bot
+- ...
