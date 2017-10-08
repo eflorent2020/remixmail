@@ -61,7 +61,6 @@ I've designed a Serverless implementation in Go using Appengine:
 
 Receiving a registered email will :
 - register the from adress after confirmation if needed
-- buffer the email if not registered
 - transform the from/to email
 - forward the email immediatly or after validation
 
