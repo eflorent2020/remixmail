@@ -17,10 +17,11 @@ This software is copyright by myself https://github.com/emmanuel-florent license
 
 See [BENEFITS.md](BENEFITS.md) for more informations
 
-Work in progress (early stage, proof of concept)
+**This is a work in progress (early stage, proof of concept)**
 
 TODO:
--more on tests
--frontend
--more on email templating
--mail service bot
+- more on tests
+- frontend
+- more on email templating
+- mail service bot
+- ...
