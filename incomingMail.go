@@ -9,7 +9,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
-	AppEngineMail "google.golang.org/appengine/mail"
+	aeMail "google.golang.org/appengine/mail"
 )
 
 // Handle all incoming mails
@@ -28,60 +28,69 @@ func incomingMail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	aliasFrom, err := getAliasFrom(ctx, *msg)
+	aliasFrom, err := getAliasFrom(ctx, msg)
 	if err != nil {
 		log.Errorf(ctx, "Error getting aliasFrom : %v", err)
 		return
 	}
-	aliasTo, err := getAliasFrom(ctx, *msg)
+	aliasTo, err := getAliasFrom(ctx, msg)
 	if err != nil {
 		log.Errorf(ctx, "Error getting aliasTo: %v", err)
 		return
 	}
-	forward(ctx, *aliasFrom, *aliasTo, *msg)
+	// TODO more on error handling
+	msgToForward := buildForward(ctx, aliasFrom, aliasTo, msg)
+	forwardSend(ctx, msgToForward)
 	log.Infof(ctx, "Done with : %v  -> %v", aliasFrom.ID, aliasTo.ID)
 }
 
 // taking an incoming message get and check validation of an alias for the recipent
-func getAliasTo(ctx context.Context, msgReceived mail.Message) (Alias, error) {
+func getAliasTo(ctx context.Context, msgReceived *mail.Message) (*Alias, error) {
 	parsedTo, err := mail.ParseAddress(msgReceived.Header.Get("From"))
 	if err != nil {
 		log.Errorf(ctx, "unable to parse from adress", err)
 		var alias Alias
-		return alias, err
+		return &alias, err
 	}
 	alias, err := dsFindAliased(ctx, parsedTo.Address)
 	if err != nil {
 		log.Errorf(ctx, "Error finding aliased", err)
-		return alias, err
+		return &alias, err
 	}
 	if alias.Validated == false {
 		log.Errorf(ctx, "Error received not validated recipient", err)
 		// TODO inform or blacklist sender
-		return alias, errors.New("the recipient did not validate")
+		return &alias, errors.New("the recipient did not validate")
 	}
-	return alias, nil
+	return &alias, nil
 }
 
 // taking an incoming message get or create an alias for the sender
-func getAliasFrom(ctx context.Context, msgReceived mail.Message) (*Alias, error) {
+func getAliasFrom(ctx context.Context, msgReceived *mail.Message) (*Alias, error) {
 	parsedFrom, err := mail.ParseAddress(msgReceived.Header.Get("From"))
 	if err != nil {
 		log.Errorf(ctx, "unable to parse from adress", err)
 		var alias Alias
 		return &alias, err
 	}
-	// try find and check if active
-	// TODO dsFindOrCreate
-	// if not found
-	translater := getTranslater(msgReceived.Header.Get("Accept-Language"))
-	aliasFrom, err := dsPutAlias(ctx, translater, parsedFrom.Address, parsedFrom.Name)
-	if err != nil {
-		log.Errorf(ctx, "unable to put alias", err)
-		var alias Alias
-		return &alias, err
+
+	// try find and check if active can ignore error not suposed to get the line
+	aliasesFrom, _ := dsGetAlias(ctx, parsedFrom.Address, parsedFrom.Name)
+
+	//sender does to exist in the database
+	if len(aliasesFrom) < 1 {
+		translater := getTranslater(msgReceived.Header.Get("Accept-Language"))
+		aliasFrom, err := dsPutAlias(ctx, translater, parsedFrom.Address, parsedFrom.Name)
+		if err != nil {
+			log.Errorf(ctx, "unable to put alias", err)
+			return aliasFrom, err
+		}
+		return aliasFrom, nil
 	}
-	return aliasFrom, nil
+
+	// sender exist in the database
+	aliasFrom := aliasesFrom[0]
+	return &aliasFrom, nil
 }
 
 // TODO should handle mail sent to a service bot
@@ -90,20 +99,25 @@ func serviceMail(ctx context.Context, msg *mail.Message) {
 }
 
 // Taking a mail.Message, from alias, to alias, try do a forward
-// TODO more on spam protection & reply on error
-func forward(ctx context.Context, aliasFrom Alias, aliasTo Alias, msgReceived mail.Message) {
+func buildForward(ctx context.Context, aliasFrom *Alias, aliasTo *Alias, msgReceived *mail.Message) *aeMail.Message {
 	var to []string
 	to[0] = aliasTo.Fullname + "<" + aliasTo.Email + ">"
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(msgReceived.Body)
 	body := buf.String()
-	msg := &AppEngineMail.Message{
+	msg := &aeMail.Message{
 		Sender:  aliasFrom.Fullname + " <" + aliasFrom.Alias + ">",
 		To:      to,
 		Subject: msgReceived.Header.Get("subject"),
 		Body:    body,
 	}
-	if err := AppEngineMail.Send(ctx, msg); err != nil {
+	return msg
+}
+
+func forwardSend(ctx context.Context, msg *aeMail.Message) error {
+	if err := aeMail.Send(ctx, msg); err != nil {
 		log.Errorf(ctx, "couldnt_send_email", err)
+		return err
 	}
+	return nil
 }
