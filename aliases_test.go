@@ -40,7 +40,7 @@ func TestDatastorePutAlias(t *testing.T) {
 	}
 	defer done()
 	tr := getTranslater("en-EN")
-	alias, error := dsPutAlias(ctx, tr, testEmail, testFullname)
+	alias, error := dsPutAliasSendValidationLink(ctx, tr, testEmail, testFullname)
 	if error != nil {
 		t.Fatal(error)
 	}

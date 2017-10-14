@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"net/http/httptest"
 	"net/mail"
 	"strings"
 	"testing"
@@ -8,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
+	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 )
 
@@ -96,4 +99,35 @@ func TestBuildForward(t *testing.T) {
 	aeMsg := buildForward(ctx, aliasFrom, aliasTo, msg)
 	assert.Equal(t, "Bob Doe <bob00b3b-11d8-4874-bea6-8b653d3a0592@"+DOMAIN+">", aeMsg.Sender, "from header should be translated")
 	assert.Equal(t, "Alice Doe <alice@privacy.net>", aeMsg.To[0], "to header should be translated")
+}
+
+func TestIncomingMail4ServiceRegister(t *testing.T) {
+	_, inst := getTestContext(t)
+	defer inst.Close()
+
+	sample := `Return-path: <sender@senderdomain.tld>
+Delivery-date: Wed, 13 Apr 2011 00:31:13 +0200
+Message-ID: <xxxxxxxx.xxxxxxxx@senderdomain.tld>
+Date: Tue, 12 Apr 2011 20:36:01 -0100
+X-Mailer: Mail Client
+From: Sender Name <sender@senderdomain.tld>
+To: Recipient Name <system@snapmail-182207.appspotmail.com>
+Subject: ReGister
+
+This is the body...
+`
+	r := strings.NewReader(sample)
+
+	req1, err := inst.NewRequest("GET", "/_ah/mail/", r)
+	if err != nil {
+		t.Fatalf("Failed to create req1: %v", err)
+	}
+	_ = appengine.NewContext(req1)
+	w := httptest.NewRecorder()
+
+	incomingMail(w, req1)
+	str := w.Body.String()
+	res := Alias{}
+	json.Unmarshal([]byte(str), &res)
+	assert.Equal(t, "sender@senderdomain.tld", res.Email, "email should be acquired acquired")
 }

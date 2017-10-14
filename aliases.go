@@ -28,6 +28,7 @@ type Alias struct {
 	CreatedDate   time.Time `datastore:"created_at"`
 	Validated     bool      `datastore:"validated"`
 	ValidationKey string    `datastore:"validation_key"`
+	Domain        string
 }
 
 func aliasKey(c context.Context) *datastore.Key {
@@ -35,7 +36,7 @@ func aliasKey(c context.Context) *datastore.Key {
 }
 
 // take an email, a fullname, check email format and put in datastore
-func dsPutAlias(ctx context.Context, T i18n.TranslateFunc, email string, fullname string) (*Alias, error) {
+func dsPutAliasSendValidationLink(ctx context.Context, T i18n.TranslateFunc, email string, fullname string) (*Alias, error) {
 	err := ValidateEmailFormat(email)
 	alias := new(Alias)
 	if err != nil {
@@ -147,12 +148,11 @@ func filterByName(aliases []Alias, fullname string) (ret []Alias) {
 // For a given validationKey (previously sent by mail)
 // set the Alias as Valitaed by the owner of the real email
 func dsValidateAlias(ctx context.Context, validationKey string) (Alias, error) {
-	q := datastore.NewQuery("Alias").Filter("ValidationKey = ", validationKey)
+	q := datastore.NewQuery("Alias").Filter("validation_key = ", validationKey)
 	var aliases []Alias
 	var alias Alias
 	keys, err := q.GetAll(ctx, &aliases)
 	if err != nil {
-
 		return alias, err
 	}
 	if len(aliases) == 1 {
@@ -191,7 +191,7 @@ func dsDeleteAlias(r *http.Request, key *datastore.Key) error {
 }
 
 func createConfirmationURL(alias *Alias) string {
-	return APP_ROOT_URL + "api/alias/validate/" + alias.ValidationKey
+	return APP_ROOT_URL + "/#/alias/validate/" + alias.ValidationKey
 }
 
 func sendValidationLink(ctx context.Context, T i18n.TranslateFunc, alias *Alias) {
@@ -207,4 +207,5 @@ func sendValidationLink(ctx context.Context, T i18n.TranslateFunc, alias *Alias)
 	if err := mail.Send(ctx, msg); err != nil {
 		log.Errorf(ctx, T("couldnt_send_email"), err)
 	}
+	log.Infof(ctx, "validation email sent to "+addr+" "+url)
 }

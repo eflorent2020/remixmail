@@ -6,8 +6,6 @@ import (
 	"github.com/nicksnyder/go-i18n/i18n"
 )
 
-
-
 func init() {
 	i18n.MustLoadTranslationFile("lang/en-US.all.json")
 	r := makeRouter()

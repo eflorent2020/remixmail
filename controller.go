@@ -2,15 +2,41 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/nicksnyder/go-i18n/i18n"
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/user"
 )
+
+// simple controller to get sitename, tagline and service email
+func getEntrepriseInfo(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	/* if need seed for dev
+	tr := getTranslaterFromReq(r)
+	dsPutAliasSendValidationLink(ctx, tr, "me@privacy.net", "plop")
+	*/
+	if appengine.IsDevAppServer() {
+		w.Header().Add("Access-Control-Allow-Origin", "*")
+	}
+	response := make(map[string]string)
+	response["APPNAME"] = APP_NAME
+	response["SERVICE_MAIL"] = SERVICE_MAIL
+	response["TAGLINE"] = TAGLINE
+	loginUrl, _ := user.LoginURL(ctx, "#/admin")
+	logoutUrl, _ := user.LogoutURL(ctx, "/")
+	u := user.Current(ctx)
+	loggedIn := (u != nil)
+	response["LOGGED"] = strconv.FormatBool(loggedIn)
+	response["LOGIN"] = loginUrl
+	response["LOGOUT"] = logoutUrl
+	respondWithJSON(w, http.StatusOK, response)
+}
 
 func getTranslaterFromReq(r *http.Request) i18n.TranslateFunc {
 	acceptLang := r.Header.Get("Accept-Language")
@@ -31,6 +57,7 @@ func getTranslater(acceptLang string) i18n.TranslateFunc {
 	return T
 }
 
+/*
 func putApiKey(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	u := user.Current(ctx)
@@ -55,7 +82,7 @@ func putApiKey(w http.ResponseWriter, r *http.Request) {
 	}
 	respondWithJSON(w, http.StatusOK, "mail sent")
 }
-
+*/
 func putAlias(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	vars := mux.Vars(r)
@@ -63,7 +90,7 @@ func putAlias(w http.ResponseWriter, r *http.Request) {
 	fullname := strings.TrimSpace(vars["fullname"])
 	alias := new(Alias)
 	T := getTranslaterFromReq(r)
-	alias, err := dsPutAlias(ctx, T, email, fullname)
+	alias, err := dsPutAliasSendValidationLink(ctx, T, email, fullname)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
@@ -71,15 +98,77 @@ func putAlias(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, alias)
 }
 
+func updateAlias(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	vars := mux.Vars(r)
+	q := datastore.NewQuery("Alias").Filter("validation_key = ", strings.TrimSpace(vars["validationKey"]))
+	var aliases []Alias
+	keys, err := q.GetAll(ctx, &aliases)
+	if appengine.IsDevAppServer() {
+		w.Header().Add("Access-Control-Allow-Origin", "*")
+	}
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if len(aliases) == 1 {
+		decoder := json.NewDecoder(r.Body)
+		var t Alias
+		err := decoder.Decode(&t)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		fmt.Println(t.Fullname)
+		aliases[0].Fullname = t.Fullname
+		datastore.Put(ctx, keys[0], &aliases[0])
+		respondWithJSON(w, http.StatusOK, aliases[0])
+		return
+	}
+	respondWithError(w, http.StatusInternalServerError, "something went wrong")
+}
+
+func deleteAlias(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	vars := mux.Vars(r)
+	q := datastore.NewQuery("Alias").Filter("validation_key = ", strings.TrimSpace(vars["validationKey"]))
+	var aliases []Alias
+	keys, err := q.GetAll(ctx, &aliases)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if len(aliases) == 1 {
+		decoder := json.NewDecoder(r.Body)
+		var t Alias
+		err := decoder.Decode(&t)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		fmt.Println(t.Fullname)
+		aliases[0].Fullname = t.Fullname
+		datastore.Delete(ctx, keys[0])
+		respondWithJSON(w, http.StatusOK, aliases[0])
+		return
+	}
+	respondWithError(w, http.StatusInternalServerError, "something went wrong")
+
+}
+
 func validateAlias(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	vars := mux.Vars(r)
+	if appengine.IsDevAppServer() {
+		w.Header().Add("Access-Control-Allow-Origin", "*")
+	}
 	validationKey := strings.TrimSpace(vars["validationKey"])
 	alias, err := dsValidateAlias(ctx, validationKey)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	alias.Domain = DOMAIN
 	respondWithJSON(w, http.StatusOK, alias)
 }
 
@@ -119,4 +208,17 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
+}
+
+func listApiKey(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	u := user.Current(ctx)
+	if u == nil {
+		respondWithError(w, http.StatusForbidden, "")
+		return
+	}
+	if !u.Admin {
+		respondWithError(w, http.StatusForbidden, "")
+		return
+	}
 }

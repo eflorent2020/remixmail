@@ -13,4 +13,6 @@ const DOMAIN = APP_ID + ".appspotmail.com"
 const SENDER = "service@" + DOMAIN
 const APP_ROOT_URL = "https://" + APP_ID + ".appengine.com"
 
-const SERVICEMAIL = "system@" + DOMAIN
+const SERVICE_MAIL = "system@" + DOMAIN
+
+const TAGLINE = " email-address proxy service "

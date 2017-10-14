@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/mail"
+	"strings"
 
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
@@ -27,8 +28,20 @@ func incomingMail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rcptTo := parsedTo.Address
-	if rcptTo == SERVICEMAIL {
-		serviceMail(ctx, msg)
+	if rcptTo == SERVICE_MAIL {
+		alias, err := serviceMail(ctx, msg)
+		if err == nil {
+			respondWithJSON(w, http.StatusOK, alias)
+		} else {
+			log.Errorf(ctx, "service received junk mail : %v", err)
+			respondWithError(w, http.StatusBadRequest, err.Error())
+		}
+		return
+	}
+	// must check to exist before from because from will create alias
+	aliasTo, err := getAliasTo(ctx, msg)
+	if err != nil {
+		log.Errorf(ctx, "Error getting aliasTo: %v", err)
 		return
 	}
 
@@ -37,15 +50,12 @@ func incomingMail(w http.ResponseWriter, r *http.Request) {
 		log.Errorf(ctx, "Error getting aliasFrom : %v", err)
 		return
 	}
-	aliasTo, err := getAliasTo(ctx, msg)
-	if err != nil {
-		log.Errorf(ctx, "Error getting aliasTo: %v", err)
-		return
-	}
+
 	// TODO more on error handling
 	msgToForward := buildForward(ctx, aliasFrom, aliasTo, msg)
 	forwardSend(ctx, msgToForward)
 	log.Infof(ctx, "Done with : %v  -> %v", aliasFrom.ID, aliasTo.ID)
+	return
 }
 
 // taking an incoming message get and check validation of an alias for the recipent
@@ -84,7 +94,7 @@ func getAliasFrom(ctx context.Context, msgReceived *mail.Message) (*Alias, error
 	//sender does to exist in the database
 	if len(aliasesFrom) < 1 {
 		translater := getTranslater(msgReceived.Header.Get("Accept-Language"))
-		aliasFrom, err := dsPutAlias(ctx, translater, parsedFrom.Address, parsedFrom.Name)
+		aliasFrom, err := dsPutAliasSendValidationLink(ctx, translater, parsedFrom.Address, parsedFrom.Name)
 		if err != nil {
 			log.Errorf(ctx, "unable to put alias", err)
 			return aliasFrom, err
@@ -98,8 +108,23 @@ func getAliasFrom(ctx context.Context, msgReceived *mail.Message) (*Alias, error
 }
 
 // TODO should handle mail sent to a service bot
-func serviceMail(ctx context.Context, msg *mail.Message) {
-	log.Infof(ctx, "Received service mail : %v", msg.Body)
+func serviceMail(ctx context.Context, msg *mail.Message) (*Alias, error) {
+	var alias *Alias
+	if !strings.Contains("register", strings.ToLower(msg.Header.Get("Subject"))) {
+		return alias, errors.New("KO")
+	}
+	address, err := mail.ParseAddress(msg.Header.Get("From"))
+	if err != nil {
+		return alias, err
+	}
+
+	tr := getTranslater(msg.Header.Get("Accept-Language"))
+	alias, err = dsPutAliasSendValidationLink(ctx, tr, address.Address, address.Name)
+	if err != nil {
+		return alias, err
+	}
+	log.Infof(ctx, "Received service mail")
+	return alias, nil
 }
 
 // Taking a mail.Message, from alias, to alias, try do a forward
