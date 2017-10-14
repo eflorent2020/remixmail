@@ -67,7 +67,7 @@ func dsPutAlias(ctx context.Context, T i18n.TranslateFunc, email string, fullnam
 // storeGetAliases take an email as argument and return an array of
 // all Alias struc
 func dsGetAliases(ctx context.Context, email string) ([]Alias, error) {
-	q := datastore.NewQuery("Alias").Filter("Email = ", email)
+	q := datastore.NewQuery("Alias").Filter("email = ", email)
 	var aliases []Alias
 	if _, err := q.GetAll(ctx, &aliases); err != nil {
 		return aliases, err
@@ -77,8 +77,9 @@ func dsGetAliases(ctx context.Context, email string) ([]Alias, error) {
 
 // storeGetAliases take an email as argument and return an array of
 // all Alias struc
-func dsFindAliased(ctx context.Context, aliasKey string) (Alias, error) {
-	q := datastore.NewQuery("Alias").Filter("Alias = ", aliasKey)
+func dsFindAliased(ctx context.Context, email string) (Alias, error) {
+	aliasKey := strings.Split(email, "@")[0]
+	q := datastore.NewQuery("Alias").Filter("alias = ", aliasKey)
 	var aliases []Alias
 	var alias Alias
 	if _, err := q.GetAll(ctx, &aliases); err != nil {

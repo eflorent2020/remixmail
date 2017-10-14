@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest"
 	"google.golang.org/appengine/datastore"
 )
@@ -54,14 +56,27 @@ func TestDatastorePutAlias(t *testing.T) {
 	assert.Equal(t, day, tday, "should store date - this day")
 }
 
-func TestDatastoreGetAlias(t *testing.T) {
-	ctx, done, err := aetest.NewContext()
-	var testEmail = "me@privacy.net"
-	var testFullname = "John Doe"
+// get a context for test with datastore consistency activated
+func getTestContext(t *testing.T) (context.Context, aetest.Instance) {
+	inst, err := aetest.NewInstance(
+		&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer done()
+	req, err := inst.NewRequest("GET", "/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := appengine.NewContext(req)
+	return ctx, inst
+}
+
+func TestDatastoreGetAlias(t *testing.T) {
+	ctx, inst := getTestContext(t)
+	defer inst.Close()
+	var testEmail = "me@privacy.net"
+	var testFullname = "John Doe"
+
 	key := datastore.NewKey(ctx, "Alias", "", 1, nil)
 	alias := &Alias{1,
 		"me@privacy.net",
@@ -73,12 +88,12 @@ func TestDatastoreGetAlias(t *testing.T) {
 	if _, err := datastore.Put(ctx, key, alias); err != nil {
 		t.Fatal(err)
 	}
+
 	aliases, error := dsGetAlias(ctx, testEmail, testFullname)
 	if error != nil {
 		t.Fatal(error)
 	}
-	// this is the expected behaviour ...  consistency & unit test ...
-	assert.Equal(t, len(aliases), 0, "there should not be aliases yet")
+	assert.Equal(t, len(aliases), 1, "there should not be aliases yet")
 }
 
 /**

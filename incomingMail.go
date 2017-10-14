@@ -21,8 +21,12 @@ func incomingMail(w http.ResponseWriter, r *http.Request) {
 		log.Errorf(ctx, "Error reading mail body: %v", err)
 		return
 	}
-	// Todo parse address
-	rcptTo := msg.Header.Get("To")
+	parsedTo, err := mail.ParseAddress(msg.Header.Get("To"))
+	if err != nil {
+		log.Errorf(ctx, "Error parsing to address : %v", err)
+		return
+	}
+	rcptTo := parsedTo.Address
 	if rcptTo == SERVICEMAIL {
 		serviceMail(ctx, msg)
 		return
@@ -33,7 +37,7 @@ func incomingMail(w http.ResponseWriter, r *http.Request) {
 		log.Errorf(ctx, "Error getting aliasFrom : %v", err)
 		return
 	}
-	aliasTo, err := getAliasFrom(ctx, msg)
+	aliasTo, err := getAliasTo(ctx, msg)
 	if err != nil {
 		log.Errorf(ctx, "Error getting aliasTo: %v", err)
 		return
@@ -46,7 +50,7 @@ func incomingMail(w http.ResponseWriter, r *http.Request) {
 
 // taking an incoming message get and check validation of an alias for the recipent
 func getAliasTo(ctx context.Context, msgReceived *mail.Message) (*Alias, error) {
-	parsedTo, err := mail.ParseAddress(msgReceived.Header.Get("From"))
+	parsedTo, err := mail.ParseAddress(msgReceived.Header.Get("To"))
 	if err != nil {
 		log.Errorf(ctx, "unable to parse from adress", err)
 		var alias Alias
@@ -58,7 +62,7 @@ func getAliasTo(ctx context.Context, msgReceived *mail.Message) (*Alias, error) 
 		return &alias, err
 	}
 	if alias.Validated == false {
-		log.Errorf(ctx, "Error received not validated recipient", err)
+		log.Errorf(ctx, "The recipient did not yet validate it's address", err)
 		// TODO inform or blacklist sender
 		return &alias, errors.New("the recipient did not validate")
 	}
@@ -100,13 +104,12 @@ func serviceMail(ctx context.Context, msg *mail.Message) {
 
 // Taking a mail.Message, from alias, to alias, try do a forward
 func buildForward(ctx context.Context, aliasFrom *Alias, aliasTo *Alias, msgReceived *mail.Message) *aeMail.Message {
-	var to []string
-	to[0] = aliasTo.Fullname + "<" + aliasTo.Email + ">"
+	to := []string{aliasTo.Fullname + " <" + aliasTo.Email + ">"}
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(msgReceived.Body)
 	body := buf.String()
 	msg := &aeMail.Message{
-		Sender:  aliasFrom.Fullname + " <" + aliasFrom.Alias + ">",
+		Sender:  aliasFrom.Fullname + " <" + aliasFrom.Alias + "@" + DOMAIN + ">",
 		To:      to,
 		Subject: msgReceived.Header.Get("subject"),
 		Body:    body,
