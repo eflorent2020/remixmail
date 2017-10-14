@@ -43,7 +43,7 @@ export default {
     getData () {
       let baseUrl = ''
       if (Vue.config.productionTip === false) {
-        baseUrl = 'http://localhost:3000'
+        // baseUrl = 'http://localhost:3000'
       }
       var me = this
       Vue.http.get(baseUrl + '/api/entreprise').then(response => {

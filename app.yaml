@@ -7,3 +7,8 @@ handlers:
 
 inbound_services:
 - mail
+
+skip_files:
+- remixmail/node_modules/
+- npm-debug.log
+- remixmail/test/unit/coverage

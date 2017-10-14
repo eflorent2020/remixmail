@@ -46,7 +46,7 @@ export default {
       if (confirm('Do you confirm ?')) {
         let baseUrl = ''
         if (Vue.config.productionTip === false) {
-          baseUrl = 'http://localhost:3000'
+          // baseUrl = 'http://localhost:3000'
         }
         var me = this
         Vue.http.delete(baseUrl + '/api/alias/validate/' + this.$route.params.validationKey).then(response => {

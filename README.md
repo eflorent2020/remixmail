@@ -13,15 +13,13 @@ This is a Go application for AppEngine Standard environement.
 Feel free to complete and adapt it to your needs. 
 This software is copyright by myself https://github.com/emmanuel-florent licensed under the GPLV3.
 
-# Status
+[Setup a Go appengine project](https://cloud.google.com/appengine/docs/standard/go/download), edit app.yamp and config.Go
 
-See [BENEFITS.md](BENEFITS.md) for more informations
+```bash
+git clone https://github.com/emmanuel-florent/remixmail
+cd remixmail 
+npm run build
+cd ..
+gcloud app deploy app.yaml
+```
 
-**This is a work in progress (early stage, proof of concept)**
-
-TODO:
-- more on tests
-- frontend
-- more on email templating
-- mail service bot
-- ...
