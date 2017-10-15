@@ -9,7 +9,7 @@
     <span v-if="msg === null">
     <h1>Congrats <span class="name">{{ alias.Fullname }}</span> everyhing is now activated</h1>
     <h2> your mail address is</h2>    
-    <h2 class="alias">{{ alias.Alias }}@{{ alias.Domain }}</h2>
+    <h2 class="alias">{{ alias.Alias }}</h2>
     <ul>
       <li>You may like to override your name 
         <input type="text" name="name" v-model="alias.Fullname">

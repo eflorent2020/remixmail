@@ -19,12 +19,11 @@ func setSampleAlias(t *testing.T, ctx context.Context) {
 	key := datastore.NewKey(ctx, "Alias", "", 1, nil)
 	aliasTest := &Alias{1,
 		"me@privacy.net",
-		"5a700b3b-11d8-4874-bea6-8b653d3a0592",
+		"test_test1@" + MAIL_DOMAIN,
 		"John Doe",
 		time.Now(),
 		true,
-		"",
-		"appspotmail.com"}
+		""}
 	if _, err := datastore.Put(ctx, key, aliasTest); err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +37,7 @@ Message-ID: <xxxxxxxx.xxxxxxxx@senderdomain.tld>
 Date: Tue, 12 Apr 2011 20:36:01 -0100
 X-Mailer: Mail Client
 From: Sender Name <sender@senderdomain.tld>
-To: Recipient Name <5a700b3b-11d8-4874-bea6-8b653d3a0592@privacy.net>
+To: Recipient Name <test_test1@` + MAIL_DOMAIN + `>
 Subject: Message Subject
 
 This is the body...
@@ -60,7 +59,7 @@ func TestGetAliasFrom(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "sender@senderdomain.tld", alias.Email, "should find alias for any incoing mail")
-	assert.Equal(t, 36, len(alias.Alias), "alias should exist for incoing mail")
+	assert.Contains(t, alias.Alias, "_", "alias should exist for incoing mail")
 }
 
 func TestGetAliasTo(t *testing.T) {
@@ -84,24 +83,22 @@ func TestBuildForward(t *testing.T) {
 
 	aliasFrom := &Alias{1,
 		"bob@privacy.net",
-		"bob00b3b-11d8-4874-bea6-8b653d3a0592",
+		"bob_test@" + MAIL_DOMAIN,
 		"Bob Doe",
 		time.Now(),
 		true,
-		"",
-		"appspotmail.com"}
+		""}
 	aliasTo := &Alias{1,
 		"alice@privacy.net",
-		"aliceb3b-11d8-4874-bea6-8b653d3a0592",
+		"alice_test@" + MAIL_DOMAIN,
 		"Alice Doe",
 		time.Now(),
 		true,
-		"",
-		"appspotmail.com"}
+		""}
 
 	aeMsg := buildForward(ctx, aliasFrom, aliasTo, msg)
-	assert.Equal(t, "Bob Doe <bob00b3b-11d8-4874-bea6-8b653d3a0592@"+MAIL_DOMAIN+">", aeMsg.Sender, "from header should be translated")
-	assert.Equal(t, "Alice Doe <alice@privacy.net>", aeMsg.To[0], "to header should be translated")
+	assert.Equal(t, "Bob Doe <bob_test@"+MAIL_DOMAIN+">", aeMsg.Sender, "should send mail from aliased")
+	assert.Equal(t, "Alice Doe <alice@privacy.net>", aeMsg.To[0], "should send mail to real")
 }
 
 func TestIncomingMail4ServiceRegister(t *testing.T) {

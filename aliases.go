@@ -28,7 +28,6 @@ type Alias struct {
 	CreatedDate   time.Time `datastore:"created_at"`
 	Validated     bool      `datastore:"validated"`
 	ValidationKey string    `datastore:"validation_key"`
-	Domain        string
 }
 
 // utitlity function to avoid repeat
@@ -51,12 +50,16 @@ func dsPutAliasSendValidationLink(ctx context.Context, lang string, email string
 	if checkExist != nil {
 		return nil, errors.New("alias already exists")
 	}
+	name, err := GetFreeName(ctx)
+	if err != nil {
+		return nil, err
+	}
 	alias := new(Alias)
 	alias.CreatedDate = time.Now()
 	alias.Email = email
 	alias.Fullname = fullname
 	alias.Validated = false
-	alias.Alias = uuid.NewV4().String()
+	alias.Alias = name + "@" + MAIL_DOMAIN
 	alias.ValidationKey = uuid.NewV4().String()
 	key := datastore.NewIncompleteKey(ctx, "Alias", aliasKey(ctx))
 	_, err = datastore.Put(ctx, key, alias)
@@ -81,15 +84,16 @@ func dsGetAliases(ctx context.Context, email string) ([]Alias, error) {
 // storeGetAliases take an email as argument and return an array of
 // all Alias struc
 func dsFindAliased(ctx context.Context, email string) (Alias, error) {
-	aliasKey := strings.Split(email, "@")[0]
-	q := datastore.NewQuery("Alias").Filter("alias = ", aliasKey)
+	// aliasKey := strings.Split(email, "@")[0]
+	q := datastore.NewQuery("Alias").Filter("alias = ", email)
 	var aliases []Alias
 	var alias Alias
 	if _, err := q.GetAll(ctx, &aliases); err != nil {
+		log.Criticalf(ctx, err.Error())
 		return alias, err
 	}
 	if len(aliases) != 1 {
-		return alias, errors.New("inconsistent aliased " + aliasKey)
+		return alias, errors.New("inconsistent aliased:" + email)
 	}
 	return aliases[0], nil
 }

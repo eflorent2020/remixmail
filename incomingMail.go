@@ -133,7 +133,7 @@ func buildForward(ctx context.Context, aliasFrom *Alias, aliasTo *Alias, msgRece
 	buf.ReadFrom(msgReceived.Body)
 	body := buf.String()
 	msg := &aeMail.Message{
-		Sender:  aliasFrom.Fullname + " <" + aliasFrom.Alias + "@" + MAIL_DOMAIN + ">",
+		Sender:  aliasFrom.Fullname + " <" + aliasFrom.Alias + ">",
 		To:      to,
 		Subject: msgReceived.Header.Get("subject"),
 		Body:    body,

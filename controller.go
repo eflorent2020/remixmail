@@ -145,7 +145,6 @@ func validateAlias(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	alias.Domain = MAIL_DOMAIN
 	respondWithJSON(w, http.StatusOK, alias)
 }
 

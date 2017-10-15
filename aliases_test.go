@@ -44,7 +44,9 @@ func TestDatastorePutAlias(t *testing.T) {
 	assert.Equal(t, alias.Fullname, testFullname, "fullname")
 	assert.Equal(t, alias.Validated, false, "validated should be false")
 	assert.Equal(t, len(alias.ValidationKey), 36, "validation key should exist")
-	assert.Equal(t, len(alias.Alias), 36, "alias should exist")
+	assert.Contains(t, alias.Alias, "_", "alias should contain _")
+	assert.Contains(t, alias.Alias, "@"+MAIL_DOMAIN, "alias should contain @MAIL_DOMAIN")
+
 	year, month, day := alias.CreatedDate.Date()
 	tyear, tmonth, tday := time.Now().Date()
 	assert.Equal(t, year, tyear, "should store date - this year")
@@ -68,16 +70,17 @@ func getTestContext(t *testing.T) (context.Context, aetest.Instance) {
 }
 
 func makeTestAlias(ctx context.Context) (*Alias, error) {
-	key := datastore.NewKey(ctx, "Alias", "", 0, nil)
+	// key := datastore.NewKey(ctx, "Alias", "", 0, nil)
+	key := aliasKey(ctx)
 	alias := &Alias{1,
 		"me@privacy.net",
-		"sfddsqfsdf@privacy.net",
+		"test_test1@" + MAIL_DOMAIN,
 		"John Doe",
 		time.Now(),
 		false,
-		"aze123",
-		"appspot.com"}
+		"aze123"}
 	if _, err := datastore.Put(ctx, key, alias); err != nil {
+		panic("cannot put alias")
 		return alias, err
 	}
 	return alias, nil
