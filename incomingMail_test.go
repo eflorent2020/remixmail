@@ -17,8 +17,7 @@ import (
 // set some data when test need it
 func setSampleAlias(t *testing.T, ctx context.Context) {
 	key := datastore.NewKey(ctx, "Alias", "", 1, nil)
-	aliasTest := &Alias{1,
-		"me@privacy.net",
+	aliasTest := &Alias{"me@privacy.net",
 		"test_test1@" + MAIL_DOMAIN,
 		"John Doe",
 		time.Now(),
@@ -81,15 +80,13 @@ func TestBuildForward(t *testing.T) {
 
 	msg := getTestMail(t)
 
-	aliasFrom := &Alias{1,
-		"bob@privacy.net",
+	aliasFrom := &Alias{"bob@privacy.net",
 		"bob_test@" + MAIL_DOMAIN,
 		"Bob Doe",
 		time.Now(),
 		true,
 		""}
-	aliasTo := &Alias{1,
-		"alice@privacy.net",
+	aliasTo := &Alias{"alice@privacy.net",
 		"alice_test@" + MAIL_DOMAIN,
 		"Alice Doe",
 		time.Now(),
@@ -130,4 +127,39 @@ This is the body...
 	res := Alias{}
 	json.Unmarshal([]byte(str), &res)
 	assert.Equal(t, "sender@senderdomain.tld", res.Email, "email should be acquired acquired")
+}
+
+func TestDecodeMail(t *testing.T) {
+	ctx, inst := getTestContext(t)
+	defer inst.Close()
+
+	sample := `From: John Doe <example@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+        boundary="XXXXboundary text"
+
+This is a multipart message in MIME format.
+
+--XXXXboundary text 
+Content-Type: text/plain
+
+this is the body text
+
+--XXXXboundary text 
+Content-Type: text/plain;
+Content-Disposition: attachment;
+        filename="test.txt"
+
+this is the attachment text
+
+--XXXXboundary text--
+
+`
+	r := strings.NewReader(sample)
+	mail, _ := mail.ReadMessage(r)
+
+	text, html, atchs := decodeMail(ctx, mail)
+	assert.Equal(t, text, "this is the body text\n")
+	assert.Equal(t, html, "")
+	assert.Equal(t, atchs[0].Name, "test.txt")
 }

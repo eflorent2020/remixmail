@@ -1,17 +1,10 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html>
-</head>
-<body>
-<p>
-    Bonjour{{.Name}}<br>
-    afin d'activer le service,<br>
-    <a href="{{.URL}}">merci de confirmer que vous avez recu ce mail</a> 
-</p>
-<p>
-    {{.APP_NAME}}<br>
-    {{.TAGLINE}}
+<html><body>
+    <p>
+        Bonjour <b>{{.Name}}</b><br>
+        afin d'activer le service : <a href="{{.URL}}">merci de confirmer que vous avez recu ce mail</a> 
     </p>
-
-</body>
-</html>
+    <p>
+        {{.APP_NAME}}<br>
+        {{.TAGLINE}}
+    </p>
+</body></html>

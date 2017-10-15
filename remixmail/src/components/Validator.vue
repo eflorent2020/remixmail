@@ -6,7 +6,7 @@
   </md-toolbar>
       <center><img src="../assets/logo.png"></center>
       <h1>{{ msg }}</h1>
-    <span v-if="msg === null">
+    <span v-if="error === null">
     <h1>Congrats <span class="name">{{ alias.Fullname }}</span> everyhing is now activated</h1>
     <h2> your mail address is</h2>    
     <h2 class="alias">{{ alias.Alias }}</h2>
@@ -35,7 +35,8 @@ export default {
   data () {
     return {
       msg: 'Super !',
-      alias: {}
+      alias: {},
+      error: null
     }
   },
   created: function () {
@@ -45,9 +46,6 @@ export default {
     destroyAcc () {
       if (confirm('Do you confirm ?')) {
         let baseUrl = ''
-        if (Vue.config.productionTip === false) {
-          // baseUrl = 'http://localhost:3000'
-        }
         var me = this
         Vue.http.delete(baseUrl + '/api/alias/validate/' + this.$route.params.validationKey).then(response => {
           // get body data
@@ -60,36 +58,28 @@ export default {
     },
     updateAcc () {
       let baseUrl = ''
-      if (Vue.config.productionTip === false) {
-        // baseUrl = 'http://localhost:3000'
-      }
       var payload = {
         validationKey: this.$route.params.validationKey,
         fullName: this.alias.Fullname
       }
-      console.log(payload)
       var me = this
       Vue.http.put(baseUrl + '/api/alias/validate/' + this.$route.params.validationKey, payload).then(response => {
         // get body data
         me.entrepriseData = response.body
-        // window.location = '/'
+        window.location = '/'
       }, response => {
         alert('ERR: ' + response.statusText)
       })
     },
     getData () {
       let baseUrl = ''
-      if (Vue.config.productionTip === false) {
-        baseUrl = 'http://localhost:3000'
-      }
       var me = this
       Vue.http.get(baseUrl + '/api/alias/validate/' + this.$route.params.validationKey).then(response => {
         // get body data
         me.alias = response.body
       }, response => {
         me.msg = response.status + ' ' + response.statusText
-        console.log(response)
-        // error callback
+        me.error = response.status
       })
     }
   }

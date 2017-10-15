@@ -36,6 +36,9 @@ func getEntrepriseInfo(w http.ResponseWriter, r *http.Request) {
 
 // take the client language and return our i18n or default
 func getLang(lang string) string {
+	if lang == "" {
+		lang = "en"
+	}
 	for _, a := range LANGS {
 		if a == lang {
 			return lang
@@ -62,7 +65,7 @@ func getTranslaterFromReq(r *http.Request) i18n.TranslateFunc {
 func getTranslater(acceptLang string) i18n.TranslateFunc {
 	T, err := i18n.Tfunc(getLang(acceptLang), DEFAULT_LANG, DEFAULT_LANG)
 	if err != nil {
-		println("something went wring with i18n")
+		println(err.Error())
 	}
 	return T
 }

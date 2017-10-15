@@ -21,7 +21,6 @@ import (
 // an email may have several Alias with different fullname
 // the application must validate any insert by email
 type Alias struct {
-	ID            int64
 	Email         string    `datastore:"email"`
 	Alias         string    `datastore:"alias"`
 	Fullname      string    `datastore:"fullname"`
@@ -46,9 +45,10 @@ func dsPutAliasSendValidationLink(ctx context.Context, lang string, email string
 	if err != nil {
 		return nil, err
 	}
-	checkExist, err := dsGetAlias(ctx, email, fullname)
-	if checkExist != nil {
-		return nil, errors.New("alias already exists")
+	aliasExists, err := dsGetAlias(ctx, email, fullname)
+	if aliasExists != nil {
+		sendValidationLink(ctx, lang, &aliasExists[0])
+		return &aliasExists[0], nil
 	}
 	name, err := GetFreeName(ctx)
 	if err != nil {
@@ -176,10 +176,10 @@ func dsDeleteAliases(r *http.Request, email string) error {
 	if err != nil {
 		return err
 	}
-	for _, a := range aliases {
-		//func NewKey(c context.Context, kind, stringID string, intID int64, parent *Key) *Key
-		key := datastore.NewKey(ctx, "Alias", "", a.ID, nil)
-		err = dsDeleteAlias(r, key)
+	q := datastore.NewQuery("Alias").Filter("email = ", email)
+	keys, err := q.GetAll(ctx, &aliases)
+	for _, key := range keys {
+		err := datastore.Delete(ctx, key)
 		if err != nil {
 			return err
 		}
@@ -218,8 +218,10 @@ func sendValidationLink(ctx context.Context, lang string, alias *Alias) (*mail.M
 		APP_NAME: APP_NAME,
 		TAGLINE:  TAGLINE}
 	templateFileName := "templates/" + lang + "/mail-confirm.html"
+
 	t, err := template.ParseFiles(templateFileName)
 	if err != nil {
+		log.Criticalf(ctx, err.Error())
 		return nil, err
 	}
 	buf := new(bytes.Buffer)
@@ -227,23 +229,22 @@ func sendValidationLink(ctx context.Context, lang string, alias *Alias) (*mail.M
 		return nil, err
 	}
 	body := buf.String()
-
-	subject := "confirm_registration"
+	T := getTranslater(lang)
+	subject := T("confirm_registration")
 	msg := &mail.Message{Sender: APP_NAME + " <" + SENDER + ">",
-		To:      []string{addr},
-		Subject: subject,
-		Body:    body}
+		To:       []string{addr},
+		Subject:  subject,
+		HTMLBody: body}
 	return sendMail(ctx, msg)
 }
 
-// simply send a mails
-// extracted just for code readability
+// simply send a mail
 func sendMail(ctx context.Context, msg *mail.Message) (*mail.Message, error) {
 	if err := mail.Send(ctx, msg); err != nil {
-		log.Errorf(ctx, "couldnt_send_email", err)
+		log.Errorf(ctx, "couldnt_send_email %v", err)
 		return msg, err
 	}
-	log.Infof(ctx, "validation email sent !")
+	print(msg.Body)
 	return msg, nil
 }
 

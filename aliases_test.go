@@ -38,7 +38,7 @@ func TestDatastorePutAlias(t *testing.T) {
 	var testFullname = "John Doe"
 	assert.Nil(t, err, "test machinery should ge a context")
 	defer done()
-	alias, err := dsPutAliasSendValidationLink(ctx, "en-EN", testEmail, testFullname)
+	alias, err := dsPutAliasSendValidationLink(ctx, "en-US", testEmail, testFullname)
 	assert.Nil(t, err, "dsPutAliasSendValidationLink should not return error")
 	assert.Equal(t, alias.Email, testEmail, "email should be stored")
 	assert.Equal(t, alias.Fullname, testFullname, "fullname")
@@ -72,8 +72,7 @@ func getTestContext(t *testing.T) (context.Context, aetest.Instance) {
 func makeTestAlias(ctx context.Context) (*Alias, error) {
 	// key := datastore.NewKey(ctx, "Alias", "", 0, nil)
 	key := aliasKey(ctx)
-	alias := &Alias{1,
-		"me@privacy.net",
+	alias := &Alias{"me@privacy.net",
 		"test_test1@" + MAIL_DOMAIN,
 		"John Doe",
 		time.Now(),
@@ -104,16 +103,16 @@ func TestSendValidationLink(t *testing.T) {
 	defer inst.Close()
 	alias, err := makeTestAlias(ctx)
 	assert.Nil(t, err, "cannot make test alias")
-	msg, err := sendValidationLink(ctx, "en-EN", alias)
+	msg, err := sendValidationLink(ctx, "en-US", alias)
 	assert.Nil(t, err, "SendValidationLink should not return error")
 	testLink := createConfirmationURL(alias)
-	assert.Contains(t, msg.Body, alias.Fullname, "mail body should be personnalized")
-	assert.Contains(t, msg.Body, testLink, "mail body should contains link")
+	assert.Contains(t, msg.HTMLBody, alias.Fullname, "mail body should be personnalized")
+	assert.Contains(t, msg.HTMLBody, testLink, "mail body should contains link")
 	assert.Contains(t, msg.Sender, SENDER, "should send mail with configured sender")
 	assert.Contains(t, msg.To[0], alias.Email, "should send mail to client address")
-	// assert.Contains(t, msg.Subject, "hello", "subject well formed")
-	assert.Contains(t, msg.Body, APP_NAME, "message sould be signed")
-	assert.Contains(t, msg.Body, TAGLINE, "message sould be signed (2)")
+	assert.Contains(t, msg.Subject, "Confirm registration", "subject well formed")
+	assert.Contains(t, msg.HTMLBody, APP_NAME, "message sould be signed")
+	assert.Contains(t, msg.HTMLBody, TAGLINE, "message sould be signed (2)")
 	// println(msg.Body)
 }
 
@@ -126,7 +125,7 @@ func TestCreateConfirmationURL(t *testing.T) {
 	parsed, err := url.Parse(testUrl)
 	assert.Nil(t, err, "cannot parse CreateConfirmationURL")
 	assert.Equal(t, parsed.Scheme, "https")
-	assert.Equal(t, parsed.Host, DOMAIN)
+	assert.Equal(t, parsed.Scheme+"://"+parsed.Host, APP_ROOT_URL)
 	assert.Equal(t, parsed.Path, "/")
 	assert.Equal(t, parsed.Fragment, "/alias/validate/"+alias.ValidationKey)
 }

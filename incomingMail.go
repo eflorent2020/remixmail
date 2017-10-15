@@ -5,13 +5,62 @@ import (
 	"errors"
 	"net/http"
 	"net/mail"
+	"strconv"
 	"strings"
 
+	"github.com/jhillyerd/go.enmime"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
 	aeMail "google.golang.org/appengine/mail"
 )
+
+func decodeMail(ctx context.Context, msg *mail.Message) (string, string, []aeMail.Attachment) {
+	// Parse message body with enmime
+	mime, err := enmime.ParseMIMEBody(msg)
+	if err != nil {
+		// return fmt.Errorf("During enmime.ParseMIMEBody: %v", err)
+	}
+	var atchs []aeMail.Attachment
+
+	for i, a := range mime.Attachments {
+		ath := aeMail.Attachment{
+			a.FileName(),
+			a.Content(),
+			"<content" + strconv.Itoa(i) + ">"}
+		atchs = append(atchs, ath)
+	}
+	return mime.Text, mime.HTML, atchs
+}
+
+// Taking a mail.Message, from alias, to alias, try do a forward
+func buildForward(ctx context.Context, aliasFrom *Alias, aliasTo *Alias, msgReceived *mail.Message) (msg aeMail.Message) {
+	// recover/fallback using straight body mail if parse failed ...
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf(ctx, "was panic, recovered value: %v", r)
+			buf := new(bytes.Buffer)
+			buf.ReadFrom(msgReceived.Body)
+			// (re) build a mail
+			msg = aeMail.Message{
+				Sender:  aliasFrom.Fullname + " <" + aliasFrom.Alias + ">",
+				To:      []string{aliasTo.Fullname + " <" + aliasTo.Email + ">"},
+				Subject: msgReceived.Header.Get("subject"),
+				Body:    buf.String()}
+		}
+	}()
+	// try decode mail
+	body, html, atchs := decodeMail(ctx, msgReceived)
+	// build a mail
+	msg = aeMail.Message{
+		Sender:      aliasFrom.Fullname + " <" + aliasFrom.Alias + ">",
+		To:          []string{aliasTo.Fullname + " <" + aliasTo.Email + ">"},
+		Subject:     msgReceived.Header.Get("subject"),
+		Body:        body,
+		HTMLBody:    html,
+		Attachments: atchs}
+	return msg
+}
 
 // Handle all incoming mails
 func incomingMail(w http.ResponseWriter, r *http.Request) {
@@ -54,8 +103,7 @@ func incomingMail(w http.ResponseWriter, r *http.Request) {
 
 	// TODO more on error handling
 	msgToForward := buildForward(ctx, aliasFrom, aliasTo, msg)
-	forwardSend(ctx, msgToForward)
-	log.Infof(ctx, "Done with : %v  -> %v", aliasFrom.ID, aliasTo.ID)
+	forwardSend(ctx, &msgToForward)
 	return
 }
 
@@ -111,7 +159,7 @@ func getAliasFrom(ctx context.Context, msgReceived *mail.Message) (*Alias, error
 func serviceMail(ctx context.Context, msg *mail.Message) (*Alias, error) {
 	var alias *Alias
 	if !strings.Contains("register", strings.ToLower(msg.Header.Get("Subject"))) {
-		return alias, errors.New("KO")
+		return alias, errors.New("KO: subject must contain register was " + strings.ToLower(msg.Header.Get("Subject")))
 	}
 	address, err := mail.ParseAddress(msg.Header.Get("From"))
 	if err != nil {
@@ -124,21 +172,6 @@ func serviceMail(ctx context.Context, msg *mail.Message) (*Alias, error) {
 	}
 	log.Infof(ctx, "Received service mail")
 	return alias, nil
-}
-
-// Taking a mail.Message, from alias, to alias, try do a forward
-func buildForward(ctx context.Context, aliasFrom *Alias, aliasTo *Alias, msgReceived *mail.Message) *aeMail.Message {
-	to := []string{aliasTo.Fullname + " <" + aliasTo.Email + ">"}
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(msgReceived.Body)
-	body := buf.String()
-	msg := &aeMail.Message{
-		Sender:  aliasFrom.Fullname + " <" + aliasFrom.Alias + ">",
-		To:      to,
-		Subject: msgReceived.Header.Get("subject"),
-		Body:    body,
-	}
-	return msg
 }
 
 func forwardSend(ctx context.Context, msg *aeMail.Message) error {
