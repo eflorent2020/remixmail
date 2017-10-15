@@ -61,7 +61,7 @@ export default {
     updateAcc () {
       let baseUrl = ''
       if (Vue.config.productionTip === false) {
-        baseUrl = 'http://localhost:3000'
+        // baseUrl = 'http://localhost:3000'
       }
       var payload = {
         validationKey: this.$route.params.validationKey,

@@ -1,18 +1,32 @@
 package main
 
-const APP_NAME = "RemixMail"
-const APP_ID = "snapmail-182207"
+const (
+	// used in home page and mail signature
 
-// All email addresses on the Email API Authorized Senders list
-// need to be valid Gmail or Google-hosted domain accounts
-// https://cloud.google.com/appengine/docs/standard/go/mail/#who_can_send_mail
-// Note: Even if your app is deployed on a custom domain,
-// you can't receive email sent to addresses in that domain.
-const DOMAIN = APP_ID + ".appspotmail.com"
+	APP_NAME = "RemixMail"
 
-const SENDER = "service@" + DOMAIN
-const APP_ROOT_URL = "https://" + APP_ID + ".appengine.com"
+	// appengine hosting
+	//
+	// Many things are possible with domain names see
+	// https://cloud.google.com/appengine/docs/standard/go/mail/#who_can_send_mail
+	APP_ID = "snapmail-182207"
+	DOMAIN = APP_ID + ".appengine.com"
 
-const SERVICE_MAIL = "system@" + DOMAIN
+	MAIL_DOMAIN = APP_ID + ".appspotmail.com"
 
-const TAGLINE = " email-address proxy service "
+	// the mail from all our messages
+	SENDER = "service@" + DOMAIN
+
+	// base url for building links such as validation link
+	APP_ROOT_URL = "https://" + APP_ID + ".appengine.com"
+
+	// the mail where to send registration requests
+	SERVICE_MAIL = "system@" + MAIL_DOMAIN
+
+	// tagline shown in homepage and confirmation mail
+	TAGLINE = " email-address proxy service "
+
+	DEFAULT_LANG = "en-EN"
+)
+
+var LANGS = [2]string{"en-EN", "fr-FR"}

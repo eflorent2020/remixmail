@@ -1,11 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"google.golang.org/appengine/aetest"
 )
 
@@ -24,6 +22,7 @@ func buildReqRes(t *testing.T, method string, url string) *httptest.ResponseReco
 
 // check a valid request / response for:
 // "GET", "/api/alias/me@privacy.net/jonh%20doe
+/*
 func TestPutAliasValid(t *testing.T) {
 	rec := buildReqRes(t, "PUT", "/api/alias/me@privacy.net/jonh%20doe")
 	// test correct response code
@@ -46,3 +45,4 @@ func TestPutFullnameInvalid(t *testing.T) {
 	rec := buildReqRes(t, "PUT", "/api/alias/meprivacy.net/%20a")
 	assert.Equal(t, rec.Code, 400, "bad fullname should respond 400")
 }
+*/

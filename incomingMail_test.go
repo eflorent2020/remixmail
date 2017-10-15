@@ -23,7 +23,8 @@ func setSampleAlias(t *testing.T, ctx context.Context) {
 		"John Doe",
 		time.Now(),
 		true,
-		""}
+		"",
+		"appspotmail.com"}
 	if _, err := datastore.Put(ctx, key, aliasTest); err != nil {
 		t.Fatal(err)
 	}
@@ -87,17 +88,19 @@ func TestBuildForward(t *testing.T) {
 		"Bob Doe",
 		time.Now(),
 		true,
-		""}
+		"",
+		"appspotmail.com"}
 	aliasTo := &Alias{1,
 		"alice@privacy.net",
 		"aliceb3b-11d8-4874-bea6-8b653d3a0592",
 		"Alice Doe",
 		time.Now(),
 		true,
-		""}
+		"",
+		"appspotmail.com"}
 
 	aeMsg := buildForward(ctx, aliasFrom, aliasTo, msg)
-	assert.Equal(t, "Bob Doe <bob00b3b-11d8-4874-bea6-8b653d3a0592@"+DOMAIN+">", aeMsg.Sender, "from header should be translated")
+	assert.Equal(t, "Bob Doe <bob00b3b-11d8-4874-bea6-8b653d3a0592@"+MAIL_DOMAIN+">", aeMsg.Sender, "from header should be translated")
 	assert.Equal(t, "Alice Doe <alice@privacy.net>", aeMsg.To[0], "to header should be translated")
 }
 

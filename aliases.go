@@ -1,14 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"errors"
-	"fmt"
+	"html/template"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/nicksnyder/go-i18n/i18n"
 	"github.com/satori/go.uuid"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
@@ -31,14 +31,15 @@ type Alias struct {
 	Domain        string
 }
 
+// utitlity function to avoid repeat
+// and handle namespaces in appengine datastore
 func aliasKey(c context.Context) *datastore.Key {
 	return datastore.NewKey(c, "Alias", "default_alias", 0, nil)
 }
 
 // take an email, a fullname, check email format and put in datastore
-func dsPutAliasSendValidationLink(ctx context.Context, T i18n.TranslateFunc, email string, fullname string) (*Alias, error) {
+func dsPutAliasSendValidationLink(ctx context.Context, lang string, email string, fullname string) (*Alias, error) {
 	err := ValidateEmailFormat(email)
-	alias := new(Alias)
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +51,7 @@ func dsPutAliasSendValidationLink(ctx context.Context, T i18n.TranslateFunc, ema
 	if checkExist != nil {
 		return nil, errors.New("alias already exists")
 	}
+	alias := new(Alias)
 	alias.CreatedDate = time.Now()
 	alias.Email = email
 	alias.Fullname = fullname
@@ -61,7 +63,7 @@ func dsPutAliasSendValidationLink(ctx context.Context, T i18n.TranslateFunc, ema
 	if err != nil {
 		return nil, err
 	}
-	sendValidationLink(ctx, T, alias)
+	sendValidationLink(ctx, lang, alias)
 	return alias, nil
 }
 
@@ -190,22 +192,71 @@ func dsDeleteAlias(r *http.Request, key *datastore.Key) error {
 	return nil
 }
 
+// create a confirmation link (url) to be put in email sent
 func createConfirmationURL(alias *Alias) string {
 	return APP_ROOT_URL + "/#/alias/validate/" + alias.ValidationKey
 }
 
-func sendValidationLink(ctx context.Context, T i18n.TranslateFunc, alias *Alias) {
+// make some checks, build the templated, translated ,
+// validation mail and call send mail function
+func sendValidationLink(ctx context.Context, lang string, alias *Alias) (*mail.Message, error) {
+	// T, lang := getTranslater(lang)
 	addr := alias.Email
 	url := createConfirmationURL(alias)
-	msg := &mail.Message{
-		Sender:  APP_NAME + " <" + SENDER + ">",
+	templateData := struct {
+		Name     string
+		URL      string
+		APP_NAME string
+		TAGLINE  string
+	}{
+		Name:     alias.Fullname,
+		URL:      url,
+		APP_NAME: APP_NAME,
+		TAGLINE:  TAGLINE}
+	templateFileName := "templates/" + lang + "/mail-confirm.html"
+	t, err := template.ParseFiles(templateFileName)
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	if err = t.Execute(buf, templateData); err != nil {
+		return nil, err
+	}
+	body := buf.String()
+
+	subject := "confirm_registration"
+	msg := &mail.Message{Sender: APP_NAME + " <" + SENDER + ">",
 		To:      []string{addr},
-		Subject: T("confirm_mail_alias"),
-		Body: fmt.Sprintf(T("confirm_message",
-			map[string]interface{}{"link": url})),
-	}
-	if err := mail.Send(ctx, msg); err != nil {
-		log.Errorf(ctx, T("couldnt_send_email"), err)
-	}
-	log.Infof(ctx, "validation email sent to "+addr+" "+url)
+		Subject: subject,
+		Body:    body}
+	return sendMail(ctx, msg)
 }
+
+// simply send a mails
+// extracted just for code readability
+func sendMail(ctx context.Context, msg *mail.Message) (*mail.Message, error) {
+	if err := mail.Send(ctx, msg); err != nil {
+		log.Errorf(ctx, "couldnt_send_email", err)
+		return msg, err
+	}
+	log.Infof(ctx, "validation email sent !")
+	return msg, nil
+}
+
+/*
+// create an alias from an http request and send validation mail
+func putAlias(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	vars := mux.Vars(r)
+	email := strings.TrimSpace(vars["email"])
+	fullname := strings.TrimSpace(vars["fullname"])
+	alias := new(Alias)
+	lang := r.Header.Get("Accept-Language")
+	alias, err := dsPutAliasSendValidationLink(ctx, lang, email, fullname)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	respondWithJSON(w, http.StatusOK, alias)
+}
+*/

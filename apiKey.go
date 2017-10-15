@@ -68,6 +68,7 @@ func sendApiKey(ctx context.Context, T i18n.TranslateFunc, apiKey ApiKey) error 
 	return nil
 }
 
+// get the api key for a customer email address
 func dsGetApiKeyFor(ctx context.Context, email string) (ApiKey, error) {
 	q := datastore.NewQuery("ApiKey").Filter("Email = ", email)
 	var apiKeys []ApiKey
@@ -81,6 +82,8 @@ func dsGetApiKeyFor(ctx context.Context, email string) (ApiKey, error) {
 	return apiKeys[0], nil
 }
 
+// given the key check an api key exists
+// return api key or nil,error
 func checkAPiKey(ctx context.Context, key string) (ApiKey, error) {
 	q := datastore.NewQuery("ApiKey").Filter("ApiKey = ", key)
 	var apiKeys []ApiKey

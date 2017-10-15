@@ -41,7 +41,8 @@ func incomingMail(w http.ResponseWriter, r *http.Request) {
 	// must check to exist before from because from will create alias
 	aliasTo, err := getAliasTo(ctx, msg)
 	if err != nil {
-		log.Errorf(ctx, "Error getting aliasTo: %v", err)
+
+		log.Errorf(ctx, "Error getting aliasTo: %v", msg.Header.Get("To"))
 		return
 	}
 
@@ -93,8 +94,7 @@ func getAliasFrom(ctx context.Context, msgReceived *mail.Message) (*Alias, error
 
 	//sender does to exist in the database
 	if len(aliasesFrom) < 1 {
-		translater := getTranslater(msgReceived.Header.Get("Accept-Language"))
-		aliasFrom, err := dsPutAliasSendValidationLink(ctx, translater, parsedFrom.Address, parsedFrom.Name)
+		aliasFrom, err := dsPutAliasSendValidationLink(ctx, msgReceived.Header.Get("Accept-Language"), parsedFrom.Address, parsedFrom.Name)
 		if err != nil {
 			log.Errorf(ctx, "unable to put alias", err)
 			return aliasFrom, err
@@ -118,8 +118,7 @@ func serviceMail(ctx context.Context, msg *mail.Message) (*Alias, error) {
 		return alias, err
 	}
 
-	tr := getTranslater(msg.Header.Get("Accept-Language"))
-	alias, err = dsPutAliasSendValidationLink(ctx, tr, address.Address, address.Name)
+	alias, err = dsPutAliasSendValidationLink(ctx, msg.Header.Get("Accept-Language"), address.Address, address.Name)
 	if err != nil {
 		return alias, err
 	}
@@ -134,7 +133,7 @@ func buildForward(ctx context.Context, aliasFrom *Alias, aliasTo *Alias, msgRece
 	buf.ReadFrom(msgReceived.Body)
 	body := buf.String()
 	msg := &aeMail.Message{
-		Sender:  aliasFrom.Fullname + " <" + aliasFrom.Alias + "@" + DOMAIN + ">",
+		Sender:  aliasFrom.Fullname + " <" + aliasFrom.Alias + "@" + MAIL_DOMAIN + ">",
 		To:      to,
 		Subject: msgReceived.Header.Get("subject"),
 		Body:    body,

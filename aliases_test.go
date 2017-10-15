@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
@@ -35,15 +36,10 @@ func TestDatastorePutAlias(t *testing.T) {
 	ctx, done, err := aetest.NewContext()
 	var testEmail = "me@privacy.net"
 	var testFullname = "John Doe"
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err, "test machinery should ge a context")
 	defer done()
-	tr := getTranslater("en-EN")
-	alias, error := dsPutAliasSendValidationLink(ctx, tr, testEmail, testFullname)
-	if error != nil {
-		t.Fatal(error)
-	}
+	alias, err := dsPutAliasSendValidationLink(ctx, "en-EN", testEmail, testFullname)
+	assert.Nil(t, err, "dsPutAliasSendValidationLink should not return error")
 	assert.Equal(t, alias.Email, testEmail, "email should be stored")
 	assert.Equal(t, alias.Fullname, testFullname, "fullname")
 	assert.Equal(t, alias.Validated, false, "validated should be false")
@@ -71,36 +67,68 @@ func getTestContext(t *testing.T) (context.Context, aetest.Instance) {
 	return ctx, inst
 }
 
-func TestDatastoreGetAlias(t *testing.T) {
-	ctx, inst := getTestContext(t)
-	defer inst.Close()
-	var testEmail = "me@privacy.net"
-	var testFullname = "John Doe"
-
-	key := datastore.NewKey(ctx, "Alias", "", 1, nil)
+func makeTestAlias(ctx context.Context) (*Alias, error) {
+	key := datastore.NewKey(ctx, "Alias", "", 0, nil)
 	alias := &Alias{1,
 		"me@privacy.net",
 		"sfddsqfsdf@privacy.net",
 		"John Doe",
 		time.Now(),
 		false,
-		""}
+		"aze123",
+		"appspot.com"}
 	if _, err := datastore.Put(ctx, key, alias); err != nil {
-		t.Fatal(err)
+		return alias, err
 	}
+	return alias, nil
+}
 
-	aliases, error := dsGetAlias(ctx, testEmail, testFullname)
-	if error != nil {
-		t.Fatal(error)
-	}
+func TestDatastoreGetAlias(t *testing.T) {
+	ctx, inst := getTestContext(t)
+	defer inst.Close()
+	var testEmail = "me@privacy.net"
+	var testFullname = "John Doe"
+	alias, err := makeTestAlias(ctx)
+	assert.Nil(t, err, "cannot make test alias")
+	aliases, err := dsGetAlias(ctx, testEmail, testFullname)
+	assert.Nil(t, err, "cannot get alias")
+	assert.Equal(t, alias.Email, aliases[0].Email, "should keep data after store")
 	assert.Equal(t, len(aliases), 1, "there should not be aliases yet")
 }
 
-/**
-func TestFilterByName(t *testing.T) {
-	t.Fatal("TestFilterByName not implemented")
+func TestSendValidationLink(t *testing.T) {
+	ctx, inst := getTestContext(t)
+	defer inst.Close()
+	alias, err := makeTestAlias(ctx)
+	assert.Nil(t, err, "cannot make test alias")
+	msg, err := sendValidationLink(ctx, "en-EN", alias)
+	assert.Nil(t, err, "SendValidationLink should not return error")
+	testLink := createConfirmationURL(alias)
+	assert.Contains(t, msg.Body, alias.Fullname, "mail body should be personnalized")
+	assert.Contains(t, msg.Body, testLink, "mail body should contains link")
+	assert.Contains(t, msg.Sender, SENDER, "should send mail with configured sender")
+	assert.Contains(t, msg.To[0], alias.Email, "should send mail to client address")
+	// assert.Contains(t, msg.Subject, "hello", "subject well formed")
+	assert.Contains(t, msg.Body, APP_NAME, "message sould be signed")
+	assert.Contains(t, msg.Body, TAGLINE, "message sould be signed (2)")
+	// println(msg.Body)
 }
 
+func TestCreateConfirmationURL(t *testing.T) {
+	ctx, inst := getTestContext(t)
+	defer inst.Close()
+	alias, err := makeTestAlias(ctx)
+	assert.Nil(t, err, "cannot make test alias")
+	testUrl := createConfirmationURL(alias)
+	parsed, err := url.Parse(testUrl)
+	assert.Nil(t, err, "cannot parse CreateConfirmationURL")
+	assert.Equal(t, parsed.Scheme, "https")
+	assert.Equal(t, parsed.Host, DOMAIN)
+	assert.Equal(t, parsed.Path, "/")
+	assert.Equal(t, parsed.Fragment, "/alias/validate/"+alias.ValidationKey)
+}
+
+/**
 func TestDsValidateAlias(t *testing.T) {
 	t.Fatal("TestDsValidateAlias not implemented")
 }

@@ -17,10 +17,6 @@ import (
 // simple controller to get sitename, tagline and service email
 func getEntrepriseInfo(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
-	/* if need seed for dev
-	tr := getTranslaterFromReq(r)
-	dsPutAliasSendValidationLink(ctx, tr, "me@privacy.net", "plop")
-	*/
 	if appengine.IsDevAppServer() {
 		w.Header().Add("Access-Control-Allow-Origin", "*")
 	}
@@ -38,66 +34,42 @@ func getEntrepriseInfo(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, response)
 }
 
+// take the client language and return our i18n or default
+func getLang(lang string) string {
+	for _, a := range LANGS {
+		if a == lang {
+			return lang
+		}
+	}
+	// try to seek fr-BE for fr-FR ...
+	for _, a := range LANGS {
+		if a[0:2] == lang[0:2] {
+			return lang
+		}
+	}
+	return DEFAULT_LANG
+}
+
+// take the client request and return the best
+// github.com/nicksnyder/go-i18n/i18n translater function
 func getTranslaterFromReq(r *http.Request) i18n.TranslateFunc {
 	acceptLang := r.Header.Get("Accept-Language")
-	defaultLang := "en-US" // known valid language
-	T, err := i18n.Tfunc(acceptLang, acceptLang, defaultLang)
-	if err != nil {
-		println("something went wring with i18n")
-	}
-	return T
+	return getTranslater(acceptLang)
 }
 
+// take the client language and return the best
+// github.com/nicksnyder/go-i18n/i18n translater function
 func getTranslater(acceptLang string) i18n.TranslateFunc {
-	defaultLang := "en-US" // known valid language
-	T, err := i18n.Tfunc(acceptLang, acceptLang, defaultLang)
+	T, err := i18n.Tfunc(getLang(acceptLang), DEFAULT_LANG, DEFAULT_LANG)
 	if err != nil {
 		println("something went wring with i18n")
 	}
 	return T
 }
 
-/*
-func putApiKey(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
-	u := user.Current(ctx)
-
-	if u == nil {
-		respondWithError(w, http.StatusForbidden, "must be logged in")
-		return
-	}
-	if u.Admin == true {
-		log.Errorf(ctx, "invalid acl for "+u.Email)
-		respondWithError(w, http.StatusForbidden, "must be logged in")
-		return
-	}
-
-	vars := mux.Vars(r)
-	email := strings.TrimSpace(vars["email"])
-	T := getTranslaterFromReq(r)
-	_, err := dsPutAPiKey(ctx, T, email)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	respondWithJSON(w, http.StatusOK, "mail sent")
-}
-*/
-func putAlias(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
-	vars := mux.Vars(r)
-	email := strings.TrimSpace(vars["email"])
-	fullname := strings.TrimSpace(vars["fullname"])
-	alias := new(Alias)
-	T := getTranslaterFromReq(r)
-	alias, err := dsPutAliasSendValidationLink(ctx, T, email, fullname)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	respondWithJSON(w, http.StatusOK, alias)
-}
-
+// update alias by http, secured by validation key,
+// at confirmation mail user should update it's Fullname
+// as shown in mail
 func updateAlias(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	vars := mux.Vars(r)
@@ -120,6 +92,7 @@ func updateAlias(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Println(t.Fullname)
+		// update fullname here maybe we'll also handle PGP here one day
 		aliases[0].Fullname = t.Fullname
 		datastore.Put(ctx, keys[0], &aliases[0])
 		respondWithJSON(w, http.StatusOK, aliases[0])
@@ -128,6 +101,8 @@ func updateAlias(w http.ResponseWriter, r *http.Request) {
 	respondWithError(w, http.StatusInternalServerError, "something went wrong")
 }
 
+// on mail feedback user may delete it's account,
+// request secured by validation key
 func deleteAlias(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	vars := mux.Vars(r)
@@ -156,6 +131,8 @@ func deleteAlias(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// called when user have received email, secured y validation key
+// call the datastore func who pass the validation key to true
 func validateAlias(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	vars := mux.Vars(r)
@@ -168,10 +145,11 @@ func validateAlias(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	alias.Domain = DOMAIN
+	alias.Domain = MAIL_DOMAIN
 	respondWithJSON(w, http.StatusOK, alias)
 }
 
+/*
 func getAlias(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 	params := mux.Vars(r)
@@ -198,7 +176,7 @@ func deleteAliases(w http.ResponseWriter, r *http.Request) {
 	}
 	respondWithJSON(w, http.StatusFound, email+"aliases deleted")
 }
-
+*/
 func respondWithError(w http.ResponseWriter, code int, message string) {
 	respondWithJSON(w, code, map[string]string{"error": message})
 }
@@ -222,3 +200,30 @@ func listApiKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+/*
+func putApiKey(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	u := user.Current(ctx)
+
+	if u == nil {
+		respondWithError(w, http.StatusForbidden, "must be logged in")
+		return
+	}
+	if u.Admin == true {
+		log.Errorf(ctx, "invalid acl for "+u.Email)
+		respondWithError(w, http.StatusForbidden, "must be logged in")
+		return
+	}
+
+	vars := mux.Vars(r)
+	email := strings.TrimSpace(vars["email"])
+	T := getTranslaterFromReq(r)
+	_, err := dsPutAPiKey(ctx, T, email)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	respondWithJSON(w, http.StatusOK, "mail sent")
+}
+*/
