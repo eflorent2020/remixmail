@@ -1,0 +1,10 @@
+indexes:
+
+- kind: Alias
+  ancestor: no
+  properties:
+  - name: alias
+  - name: email
+  - name: validation_key
+  - name: created_at  
+    direction: desc

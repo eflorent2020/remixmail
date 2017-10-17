@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,6 +21,6 @@ func TestCheckNameExists(t *testing.T) {
 	alias, _ := makeTestAlias(ctx)
 	result2 := checkNameExists(ctx, "new_one_iota")
 	assert.Equal(t, result2, false)
-	result := checkNameExists(ctx, alias.Alias)
+	result := checkNameExists(ctx, strings.Split(alias.Alias, "@")[0])
 	assert.Equal(t, result, true)
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/datastore"
@@ -601,9 +602,12 @@ var (
 // GetRandomName generates a random name from the list of adjectives and surnames in this package
 // formatted as "adjective_surname". For example 'focused_turing'. If retry is non-zero, a random
 // integer between 0 and 10 will be added to the end of the name, e.g `focused_turing3`
-func GetRandomName(retry int) string {
+func GetRandomName(ctx context.Context, retry int) string {
 begin:
-	name := fmt.Sprintf("%s_%s", left[rand.Intn(len(left))], right[rand.Intn(len(right))])
+	rand.Seed(time.Now().UTC().UnixNano())
+	l := left[rand.Intn(len(left))]
+	r := right[rand.Intn(len(right))]
+	name := fmt.Sprintf("%s_%s", l, r)
 	if name == "boring_wozniak" /* Steve Wozniak is not boring */ {
 		goto begin
 	}
@@ -616,7 +620,7 @@ begin:
 
 // check if alias exists in the datastore
 func checkNameExists(ctx context.Context, name string) bool {
-	q := datastore.NewQuery("Alias").Filter("alias = ", name)
+	q := datastore.NewQuery("Alias").Filter("alias = ", name+"@"+MAIL_DOMAIN)
 	var aliases []Alias
 	if _, err := q.GetAll(ctx, &aliases); err != nil {
 		log.Errorf(ctx, err.Error())
@@ -631,7 +635,7 @@ func checkNameExists(ctx context.Context, name string) bool {
 
 func GetFreeName(ctx context.Context) (string, error) {
 	for i := 0; i < 10; i++ {
-		name := GetRandomName(i)
+		name := GetRandomName(ctx, i)
 		if !checkNameExists(ctx, name) {
 			return name, nil
 		}

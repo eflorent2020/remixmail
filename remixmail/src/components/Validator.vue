@@ -1,27 +1,43 @@
 <template>
-  
-  <span class="hello">
-    <md-toolbar>
-    <h1 class="md-title">&nbsp;</h1>
-  </md-toolbar>
-      <center><img src="../assets/logo.png"></center>
-      <h1>{{ msg }}</h1>
-    <span v-if="error === null">
-    <h1>Congrats <span class="name">{{ alias.Fullname }}</span> everyhing is now activated</h1>
-    <h2> your mail address is</h2>    
-    <h2 class="alias">{{ alias.Alias }}</h2>
-    <ul>
-      <li>You may like to override your name 
-        <input type="text" name="name" v-model="alias.Fullname">
-                <input  v-on:click="updateAcc" type="submit">
-        </li>       
-  </ul>
-      <h2>&nbsp;</h2> 
-    <p>You may like to delete your account <br>
-        <input type="button" v-on:click="destroyAcc" class="delete" value="delete">                
-        </p>       
-        </span>
-  </span>
+  <main>
+    <v-content>
+    <v-container grid-list-md text-xs-center>
+      <v-layout row wrap>
+        <v-flex xs12>          
+       <v-card>
+          <v-card-text class="blue darken-3">
+            <img src="../assets/logo.png">
+            <div class="title yellow--text">{{ msg }}<br><br></div>
+            <span v-if="error === null">
+              <div class="body-1 black-text">
+                <b>{{ alias.Fullname }}</b>, the awesome is now activated !</div>
+                  <div class="body-1 black--text">
+                  Your email address is
+                  </div>
+                  <div class="title black--text">
+                    {{ alias.Alias }}<br><br>
+                  </div>
+                  <div class="body-1 black--text text-xs-left">
+                  You may like to override your name :<br>
+                  <v-text-field
+                    name="name"    
+                    label="name"
+                    v-model="alias.Fullname"
+                    :rules="nameRules"
+                    required></v-text-field>
+                  </div>
+            </span>
+          </v-card-text>
+            <v-card-actions class="blue darken-3" v-if="error === null">
+              <v-btn color="yellow" v-on:click="destroyAcc">Delete</v-btn>
+              <v-btn color="yellow" v-on:click="updateAcc">Update</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-flex>
+     </v-layout>
+    </v-container>
+    </v-content>
+  </main>
 </template>
 
 <script>
@@ -78,80 +94,10 @@ export default {
         // get body data
         me.alias = response.body
       }, response => {
-        me.msg = response.status + ' ' + response.statusText
+        me.msg = response.status + ', ' + response.statusText
         me.error = response.status
       })
     }
   }
 }
 </script>
-
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style>
-body.md-theme-default {
-  background-color : #111111;
-}
-.hello {
-  background-color : #111111;
-  text-align: center;
-  color: white;
-  padding-top: 24px;
-    background-color: #111111;
-  color: #CCC;
-}
-h1, h2 {
-  font-weight: normal;
-}
-
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-
-a {
-  color: #42b983;
-}
-
-
-.alias {
-  color: #F44336;
-  font-weight: bold;
-  font-size: 18px;
-}
-
-input[type="submit"] {
-  background-color: green;
-}
-
-input[type="button"] {
-  padding: 10px;
-  margin-top: 12px;
-  border: solid 1px #dcdcdc;
-  transition: box-shadow 0.3s, border 0.3s;
-  background-color: red;
-  color: black;  
-}
-
-input[type="text"], input[type="submit"] {
-  padding: 10px;
-  border: solid 1px #dcdcdc;
-  transition: box-shadow 0.3s, border 0.3s;
-  color: black;
-}
-input[type="text"]:focus,
-input[type="text"].focus {
-  border: solid 1px #707070;
-  box-shadow: 0 0 5px 1px #969696;
-
-}
-
-.name {
-  color: white;
-}
-
-</style>

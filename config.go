@@ -3,15 +3,14 @@ package main
 const (
 	// used in home page and mail signature
 
-	APP_NAME = "RemixMail"
+	APP_NAME = "mx.bitcoinpages.io"
 
 	// appengine hosting
-	//
 
 	APP_ID = "snapmail-182207"
 	// DOMAIN = APP_ID + ".appspot.com"
 	// base url for building links such as validation link
-	APP_ROOT_URL = "https://" + APP_ID + ".appspot.com"
+	APP_ROOT_URL = "https://mx.bitcoinpages.io"
 
 	MAIL_DOMAIN = APP_ID + ".appspotmail.com"
 
@@ -22,7 +21,7 @@ const (
 	SENDER = "service@" + MAIL_DOMAIN
 
 	// the mail where to send registration requests
-	SERVICE_MAIL = "system@" + MAIL_DOMAIN
+	SERVICE_MAIL = "service@bitcoinpages.io"
 
 	// tagline shown in homepage and confirmation mail
 	TAGLINE = "An email-address proxy service "
@@ -31,5 +30,5 @@ const (
 )
 
 // see main, init() :
-// 	i18n.MustLoadTranslationFile("lang/en-us.all.json")
+// i18n.MustLoadTranslationFile("lang/en-us.all.json")
 var LANGS = [2]string{"en-US", "fr-FR"}

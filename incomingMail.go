@@ -90,8 +90,8 @@ func incomingMail(w http.ResponseWriter, r *http.Request) {
 	// must check to exist before from because from will create alias
 	aliasTo, err := getAliasTo(ctx, msg)
 	if err != nil {
-
 		log.Errorf(ctx, "Error getting aliasTo: %v", msg.Header.Get("To"))
+		respondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -138,10 +138,11 @@ func getAliasFrom(ctx context.Context, msgReceived *mail.Message) (*Alias, error
 	}
 
 	// try find and check if active can ignore error not suposed to get the line
-	aliasesFrom, _ := dsGetAlias(ctx, parsedFrom.Address, parsedFrom.Name)
+	aliasesFrom, _ := dsGetAlias(ctx, parsedFrom.Address, "")
 
 	//sender does to exist in the database
 	if len(aliasesFrom) < 1 {
+		log.Infof(ctx, "creating user from getAliasFrom")
 		aliasFrom, err := dsPutAliasSendValidationLink(ctx, msgReceived.Header.Get("Accept-Language"), parsedFrom.Address, parsedFrom.Name)
 		if err != nil {
 			log.Errorf(ctx, "unable to put alias", err)
@@ -155,7 +156,8 @@ func getAliasFrom(ctx context.Context, msgReceived *mail.Message) (*Alias, error
 	return &aliasFrom, nil
 }
 
-// TODO should handle mail sent to a service bot
+// handle mail sent to a service bot, if a message is received,
+// with the subject register, create an account
 func serviceMail(ctx context.Context, msg *mail.Message) (*Alias, error) {
 	var alias *Alias
 	if !strings.Contains("register", strings.ToLower(msg.Header.Get("Subject"))) {
@@ -165,7 +167,7 @@ func serviceMail(ctx context.Context, msg *mail.Message) (*Alias, error) {
 	if err != nil {
 		return alias, err
 	}
-
+	log.Infof(ctx, "creating user from serviceMail")
 	alias, err = dsPutAliasSendValidationLink(ctx, msg.Header.Get("Accept-Language"), address.Address, address.Name)
 	if err != nil {
 		return alias, err

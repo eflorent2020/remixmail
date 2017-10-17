@@ -1,73 +1,43 @@
 <template>
-  <div id="hello">
-    <md-toolbar>
-    <h1 class="md-title">&nbsp;</h1>
-  </md-toolbar>
-  
-  <div class="main-content">
+  <main>
+    <v-content>
+    <v-container grid-list-md text-xs-center>
+      <v-layout row wrap>
+        <v-flex xs12>          
+       <v-card>
+          <v-card-text class="blue darken-3">
+        <img src="../assets/logo.png">
+        <div class="title yellow--text">{{ msg }}<br>{{ entrepriseData.APPNAME }}</div>
+       <div class="sub-heading black--text"><i>{{ entrepriseData.TAGLINE }}</i></div>
+       -
+          <div class="body-1 black--text">Write to<br>
+            <a v-bind:href="'mailto:' + entrepriseData.SERVICE_MAIL + '?Subject=register'">
+             
+                  <v-btn color="primary"> {{ entrepriseData.SERVICE_MAIL }}</v-btn>
+              </a><br> 
+            with subject : "REGISTER" to activate the awesome
+            </div>
+-
 
-      <img src="../assets/logo.png">
-    <h1>{{ msg }} {{ entrepriseData.APPNAME }}</h1>
-    <h2>{{ entrepriseData.TAGLINE }}</h2>
-    <ul>
-      <li class="register"><h2>Send "REGISTER" to {{ entrepriseData.SERVICE_MAIL }}</h2></li>
-  </ul>
-  <h2>&nbsp;</h2>
-    <ul>
-      <li><a href="tos.html">Term of use</a></li>
-      <li><a href="privacypolicy.html">Privacy policy</a></li>
-      <li><a href="https://github.com/emmanuel-florent/remixmail">Get the source</a></li>
-  </ul>
-  </div>  
-  </div>
+          </v-card-text>
+</v-card>
+
+
+        </v-flex>
+     </v-layout>
+    </v-container>
+    </v-content>
+  </main>
 </template>
 
 <script>
-import Vue from 'vue'
-import VueResource from 'vue-resource'
-
-Vue.use(VueResource)
 
 export default {
-  name: 'HelloWorld',
+  props: ['entrepriseData'],
   data () {
     return {
-      msg: 'Welcome to',
-      entrepriseData: {}
-    }
-  },
-  created: function () {
-    this.getData()
-  },
-  methods: {
-    getData () {
-      let baseUrl = ''
-      var me = this
-      Vue.http.get(baseUrl + '/api/entreprise').then(response => {
-        // get body data
-        me.entrepriseData = response.body
-        console.log(me.entrepriseData.LOGIN)
-      }, response => {
-        console.log(response)
-        // error callback
-      })
+      msg: 'Welcome to'
     }
   }
 }
 </script>
-
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-.register {
-  color: #4CAF50;
-}
-</style>

@@ -45,7 +45,7 @@ func dsPutAliasSendValidationLink(ctx context.Context, lang string, email string
 	if err != nil {
 		return nil, err
 	}
-	aliasExists, err := dsGetAlias(ctx, email, fullname)
+	aliasExists, err := dsGetAlias(ctx, email, "")
 	if aliasExists != nil {
 		sendValidationLink(ctx, lang, &aliasExists[0])
 		return &aliasExists[0], nil
@@ -106,11 +106,10 @@ func dsGetAlias(ctx context.Context, email string, fullname string) ([]Alias, er
 	if err != nil {
 		return nil, err
 	}
-	aliases2 := filterByName(aliases, fullname)
 	if fullname != "" {
-		return filterByName(aliases2, fullname), nil
+		return filterByName(aliases, fullname), nil
 	} else {
-		return aliases2, nil
+		return aliases, nil
 	}
 }
 
@@ -209,12 +208,14 @@ func sendValidationLink(ctx context.Context, lang string, alias *Alias) (*mail.M
 	url := createConfirmationURL(alias)
 	templateData := struct {
 		Name     string
-		URL      string
+		Url      string
+		Alias    string
 		APP_NAME string
 		TAGLINE  string
 	}{
 		Name:     alias.Fullname,
-		URL:      url,
+		Url:      url,
+		Alias:    alias.Alias,
 		APP_NAME: APP_NAME,
 		TAGLINE:  TAGLINE}
 	templateFileName := "templates/" + lang + "/mail-confirm.html"

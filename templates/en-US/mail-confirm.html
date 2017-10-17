@@ -1,10 +1,19 @@
-<html><body>
+<html>
+ <body>
+   <p>
+      Hello <b>{{.Name}}</b><br>
+   </p>
     <p>
-        Hello <b>{{.Name}}</b><br>
-        In order to activate service : <a href="{{.URL}}">please confirm you have received</a> this email.
+      Your new email address is <b>{{.Alias}}</b>
     </p>
     <p>
-        {{.APP_NAME}}<br>
-        {{.TAGLINE}}
-    </p>
-</body></html>
+      <b>Important:</b>
+      In order to activate service, <br> 
+      <b><a href="{{.Url}}">please confirm you have received</a> this email.</b>
+  </p>  
+  <p>
+    {{.APP_NAME}}<br>
+    {{.TAGLINE}}
+  </p>
+ </body>
+ </html>
