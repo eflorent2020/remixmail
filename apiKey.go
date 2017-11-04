@@ -16,32 +16,22 @@ import (
 // on aliases without a validation key
 // in request header api_key: your-api-key
 type ApiKey struct {
-	ID     int64
-	ApiKey string `datastore:"email"`
-	Email  string `datastore:"created_at"`
-}
-
-func apiKeyKey(c context.Context) *datastore.Key {
-	// The string "default_guestbook" here could be varied to have multiple guestbooks.
-	return datastore.NewKey(c, "ApiKey", "default_api_key", 0, nil)
+	ApiKey string `datastore:"api_key"`
+	Email  string `datastore:"email"`
 }
 
 // take an email,create an api key and put in datastore
 // the api key will be sent by email
-func dsPutAPiKey(ctx context.Context, T i18n.TranslateFunc, email string) (ApiKey, error) {
+func dsPutAPiKey(ctx context.Context, T i18n.TranslateFunc, email string) (*ApiKey, error) {
 	err := ValidateEmailFormat(email)
-	var apiKey ApiKey
+	var apiKey *ApiKey
 	if err != nil {
 		return apiKey, err
 	}
-	apiKey, err = dsGetApiKeyFor(ctx, email)
-	if err == nil {
-		sendApiKey(ctx, T, apiKey)
-		return apiKey, nil
-	}
+	apiKey = new(ApiKey)
 	apiKey.Email = email
 	apiKey.ApiKey = uuid.NewV4().String()
-	key := datastore.NewIncompleteKey(ctx, "ApiKey", apiKeyKey(ctx))
+	key := datastore.NewKey(ctx, "ApiKey", email, 0, nil)
 	_, err = datastore.Put(ctx, key, apiKey)
 	if err != nil {
 		return apiKey, err
@@ -51,7 +41,7 @@ func dsPutAPiKey(ctx context.Context, T i18n.TranslateFunc, email string) (ApiKe
 }
 
 // send a friendly message containing the api key
-func sendApiKey(ctx context.Context, T i18n.TranslateFunc, apiKey ApiKey) error {
+func sendApiKey(ctx context.Context, T i18n.TranslateFunc, apiKey *ApiKey) error {
 	addr := apiKey.Email
 	key := apiKey.ApiKey
 	msg := &mail.Message{
@@ -82,14 +72,15 @@ func dsGetApiKeyFor(ctx context.Context, email string) (ApiKey, error) {
 	return apiKeys[0], nil
 }
 
-// given the key check an api key exists
-// return api key or nil,error
-func checkAPiKey(ctx context.Context, key string) (ApiKey, error) {
-	q := datastore.NewQuery("ApiKey").Filter("ApiKey = ", key)
+
+
+// dsGetAliases take an email as argument and return an array of
+// all Alias struc
+func listAPiKey(ctx context.Context) ([]ApiKey, error) {
+	q := datastore.NewQuery("ApiKey")
 	var apiKeys []ApiKey
 	if _, err := q.GetAll(ctx, &apiKeys); err != nil {
-		var apiKey ApiKey
-		return apiKey, err
+		return apiKeys, err
 	}
-	return apiKeys[0], nil
+	return apiKeys, nil
 }

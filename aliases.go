@@ -70,7 +70,7 @@ func dsPutAliasSendValidationLink(ctx context.Context, lang string, email string
 	return alias, nil
 }
 
-// storeGetAliases take an email as argument and return an array of
+// dsGetAliases take an email as argument and return an array of
 // all Alias struc
 func dsGetAliases(ctx context.Context, email string) ([]Alias, error) {
 	q := datastore.NewQuery("Alias").Filter("email = ", email)
@@ -81,7 +81,7 @@ func dsGetAliases(ctx context.Context, email string) ([]Alias, error) {
 	return aliases, nil
 }
 
-// storeGetAliases take an email as argument and return an array of
+// dsGetAliases take an email as argument and return an array of
 // all Alias struc
 func dsFindAliased(ctx context.Context, email string) (Alias, error) {
 	// aliasKey := strings.Split(email, "@")[0]
@@ -98,7 +98,7 @@ func dsFindAliased(ctx context.Context, email string) (Alias, error) {
 	return aliases[0], nil
 }
 
-// storeGetAlias take an email and a fullname as argument
+// dsGetAlias take an email and a fullname as argument
 // and return an array  []Alias,nill or nill,error,
 // appengine will restrict to maximum 1000 results
 func dsGetAlias(ctx context.Context, email string, fullname string) ([]Alias, error) {

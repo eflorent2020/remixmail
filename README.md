@@ -22,4 +22,36 @@ npm run build
 cd ..
 gcloud app deploy app.yaml
 ```
+# Mail API
 
+visit the homepage for instructions on how to register a mail alias
+
+# External API Usage
+
+Get an API Key (api_key) for a user email (api_client) at /#/admin (admin login required)
+
+then build header 
+```bash
+var hmac = crypto.createHmac('sha256', api_key);
+hmac.update(request_path); // just the path, no urlencode
+var signature = hmac.digest('hex'));
+```
+send request with header:
+```bash
+X-HMAC:  api_client,signature
+```
+Available endpoints are:
+```bash
+PUT /api/alias/{email}/{fullname}
+DELETE /api/alias/{email}
+```
+# Devel
+Back:
+```bash
+$ dev_appserver.py app.yaml
+```
+Front:
+```bash
+cd remixmail
+remixmail$ npm run dev
+```

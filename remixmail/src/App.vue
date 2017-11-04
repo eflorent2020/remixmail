@@ -42,7 +42,7 @@ export default {
     getData () {
       let baseUrl = '' // myself as root url if empty or ...
       if (process.env.NODE_ENV === 'development') {
-        baseUrl = 'http://localhost:3000'
+        baseUrl = 'http://localhost:8080'
       }
       var me = this
       Vue.http.get(baseUrl + '/api/entreprise').then(response => {
