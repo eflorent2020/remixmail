@@ -72,8 +72,6 @@ func dsGetApiKeyFor(ctx context.Context, email string) (ApiKey, error) {
 	return apiKeys[0], nil
 }
 
-
-
 // dsGetAliases take an email as argument and return an array of
 // all Alias struc
 func listAPiKey(ctx context.Context) ([]ApiKey, error) {

@@ -3,23 +3,29 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/mail"
 	"strconv"
 	"strings"
 
 	"github.com/jhillyerd/go.enmime"
+	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
 	aeMail "google.golang.org/appengine/mail"
 )
 
+// take a mail.Message, decode it in Appengine Mail Message format
+// Appengine mail format distingish text, html and attachments
 func decodeMail(ctx context.Context, msg *mail.Message) (string, string, []aeMail.Attachment) {
 	// Parse message body with enmime
 	mime, err := enmime.ParseMIMEBody(msg)
 	if err != nil {
-		// return fmt.Errorf("During enmime.ParseMIMEBody: %v", err)
+		log.Errorf(ctx, "During enmime.ParseMIMEBody: %v", err)
 	}
 	var atchs []aeMail.Attachment
 
@@ -31,6 +37,61 @@ func decodeMail(ctx context.Context, msg *mail.Message) (string, string, []aeMai
 		atchs = append(atchs, ath)
 	}
 	return mime.Text, mime.HTML, atchs
+}
+
+// take a PGP public key and a mail.Message, decode it in Appengine Mail Message format
+// then encrypt all parts it using PGP
+func encryptAndDecodeMail(ctx context.Context, key string, msg *mail.Message) (string, string, []aeMail.Attachment) {
+	pubkey, _ := openpgp.ReadArmoredKeyRing(bytes.NewBufferString(key))
+	// Parse message body with enmime
+	mime, err := enmime.ParseMIMEBody(msg)
+	if err != nil {
+		log.Errorf(ctx, "During enmime.ParseMIMEBody: %v", err)
+	}
+	var atchs []aeMail.Attachment
+
+	for i, a := range mime.Attachments {
+		//content, _ := gpg_pubkey_encrypt(ctx, nil, string(a.Content()), key)
+		buf := new(bytes.Buffer)
+		w, _ := openpgp.Encrypt(buf, pubkey, nil, nil, nil)
+		_, err = w.Write(a.Content())
+		if err != nil {
+		}
+		err = w.Close()
+		bytes, _ := ioutil.ReadAll(buf)
+		ath := aeMail.Attachment{
+			a.FileName() + ".pgp",
+			bytes,
+			"<content" + strconv.Itoa(i) + ">"}
+		atchs = append(atchs, ath)
+	}
+	text, _ := gpg_pubkey_encrypt(ctx, "PGP MESSAGE", mime.Text, key)
+	html, _ := gpg_pubkey_encrypt(ctx, "PGP MESSAGE", mime.HTML, key)
+	return text, html, atchs
+}
+
+// build a part Mime-Part encrypted message, that could be text or html
+func gpg_pubkey_encrypt(ctx context.Context, header, s, key string) (string, error) {
+	buf := new(bytes.Buffer)
+	msg, err := armor.Encode(buf, header, nil)
+	if err != nil {
+		log.Errorf(ctx, "error armoring %+v", err)
+		return s, err
+	}
+	pubkey, err := openpgp.ReadArmoredKeyRing(bytes.NewBufferString(key))
+	if err != nil {
+		log.Errorf(ctx, "error reading pub key %+v", err)
+		return s, err
+	}
+	gpg, err := openpgp.Encrypt(msg, pubkey, nil, nil, nil)
+	if err != nil {
+		log.Errorf(ctx, "error encrypting %+v", err)
+		return s, err
+	}
+	fmt.Fprintf(gpg, s)
+	gpg.Close()
+	msg.Close()
+	return buf.String(), nil
 }
 
 // Taking a mail.Message, from alias, to alias, try do a forward
@@ -49,17 +110,31 @@ func buildForward(ctx context.Context, aliasFrom *Alias, aliasTo *Alias, msgRece
 				Body:    buf.String()}
 		}
 	}()
-	// try decode mail
-	body, html, atchs := decodeMail(ctx, msgReceived)
+
 	// build a mail
-	msg = aeMail.Message{
-		Sender:      aliasFrom.Fullname + " <" + aliasFrom.Alias + ">",
-		To:          []string{aliasTo.Fullname + " <" + aliasTo.Email + ">"},
-		Subject:     msgReceived.Header.Get("subject"),
-		Body:        body,
-		HTMLBody:    html,
-		Attachments: atchs}
-	return msg
+	if len(aliasTo.PGPPubKey) > 0 {
+		log.Infof(ctx, "enforcing PGP mail")
+		body, html, atchs := encryptAndDecodeMail(ctx, string(aliasTo.PGPPubKey), msgReceived)
+		msg = aeMail.Message{
+			Sender:      aliasFrom.Fullname + " <" + aliasFrom.Alias + ">",
+			To:          []string{aliasTo.Fullname + " <" + aliasTo.Email + ">"},
+			Subject:     msgReceived.Header.Get("subject"),
+			Body:        body,
+			HTMLBody:    html,
+			Attachments: atchs}
+		return msg
+	} else {
+		log.Infof(ctx, "sending unencrypted mail")
+		body, html, atchs := decodeMail(ctx, msgReceived)
+		msg = aeMail.Message{
+			Sender:      aliasFrom.Fullname + " <" + aliasFrom.Alias + ">",
+			To:          []string{aliasTo.Fullname + " <" + aliasTo.Email + ">"},
+			Subject:     msgReceived.Header.Get("subject"),
+			Body:        body,
+			HTMLBody:    html,
+			Attachments: atchs}
+		return msg
+	}
 }
 
 // Handle all incoming mails

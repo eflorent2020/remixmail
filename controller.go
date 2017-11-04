@@ -88,17 +88,18 @@ func updateAlias(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if len(aliases) == 1 {
+	if len(aliases) >= 1 {
 		decoder := json.NewDecoder(r.Body)
 		var t Alias
 		err := decoder.Decode(&t)
 		if err != nil {
+			println(err.Error())
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		fmt.Println(t.Fullname)
 		// update fullname here maybe we'll also handle PGP here one day
 		aliases[0].Fullname = t.Fullname
+		aliases[0].PGPPubKey = t.PGPPubKey
 		datastore.Put(ctx, keys[0], &aliases[0])
 		respondWithJSON(w, http.StatusOK, aliases[0])
 		return

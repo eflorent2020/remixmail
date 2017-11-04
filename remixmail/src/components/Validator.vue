@@ -23,9 +23,20 @@
                     name="name"    
                     label="name"
                     v-model="alias.Fullname"
-                    :rules="nameRules"
                     required></v-text-field>
                   </div>
+                  <div class="body-1 black--text text-xs-left">
+                  Optionnaly add your PGP public key to enforce email encoding :<br>
+            <v-text-field
+              name="pgpPubKey"
+              label="PGP Pub key"
+              v-model="alias.PGPPubKey"
+              :rules="pgpRules"                            
+              multi-line
+            ></v-text-field>
+            </div>
+
+
             </span>
           </v-card-text>
             <v-card-actions class="blue darken-3" v-if="error === null">
@@ -52,7 +63,11 @@ export default {
     return {
       msg: 'Super !',
       alias: {},
-      error: null
+      error: null,
+      pgpRules: [
+        (v) => !!v || 'Valid PGP public key is required',
+        (v) => /-----BEGIN PGP PUBLIC KEY BLOCK-----\n(\w+)*/.test(v) || 'PGP public key must be valid'
+      ]
     }
   },
   created: function () {
@@ -62,6 +77,9 @@ export default {
     destroyAcc () {
       if (confirm('Do you confirm ?')) {
         let baseUrl = ''
+        if (process.env.NODE_ENV === 'development') {
+          baseUrl = 'http://localhost:8080'
+        }
         var me = this
         Vue.http.delete(baseUrl + '/api/alias/validate/' + this.$route.params.validationKey).then(response => {
           // get body data
@@ -74,21 +92,28 @@ export default {
     },
     updateAcc () {
       let baseUrl = ''
+      if (process.env.NODE_ENV === 'development') {
+        baseUrl = 'http://localhost:8080'
+      }
       var payload = {
         validationKey: this.$route.params.validationKey,
-        fullName: this.alias.Fullname
+        fullName: this.alias.Fullname,
+        PGPPubKey: btoa(this.alias.PGPPubKey)
       }
       var me = this
       Vue.http.put(baseUrl + '/api/alias/validate/' + this.$route.params.validationKey, payload).then(response => {
         // get body data
         me.entrepriseData = response.body
-        window.location = '/'
+        // window.location = '/'
       }, response => {
         alert('ERR: ' + response.statusText)
       })
     },
     getData () {
       let baseUrl = ''
+      if (process.env.NODE_ENV === 'development') {
+        baseUrl = 'http://localhost:8080'
+      }
       var me = this
       Vue.http.get(baseUrl + '/api/alias/validate/' + this.$route.params.validationKey).then(response => {
         // get body data

@@ -27,6 +27,7 @@ type Alias struct {
 	CreatedDate   time.Time `datastore:"created_at"`
 	Validated     bool      `datastore:"validated"`
 	ValidationKey string    `datastore:"validation_key"`
+	PGPPubKey     []byte    `datastore:"pgp_pub_key"`
 }
 
 // utitlity function to avoid repeat
